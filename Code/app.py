@@ -342,6 +342,10 @@ class GraphBuilderApp:
         
         tk.Label(stats_frame, text=f"Density: {calculate_metric(self.G, 'Density')}", bg="white").pack(anchor="w", padx=5)
         tk.Label(stats_frame, text=f"Avg Clustering: {calculate_metric(self.G, 'Avg Clustering')}", bg="white").pack(anchor="w", padx=5)
+        tk.Label(stats_frame, text=f"Cyclomatic No.: {calculate_metric(self.G, 'Cyclomatic Number')}", bg="white").pack(anchor="w", padx=5)
+        tk.Label(stats_frame, text=f"Critical Loop Nodes: {calculate_metric(self.G, 'Critical Loop Nodes')}", bg="white").pack(anchor="w", padx=5)
+        tk.Label(stats_frame, text=f"Total Cycles: {calculate_metric(self.G, 'Total Cycles')}", bg="white").pack(anchor="w", padx=5)
+        tk.Label(stats_frame, text=f"Interdependence: {calculate_metric(self.G, 'Interdependence')}", bg="white").pack(anchor="w", padx=5)
 
         # --- Agent Overview Section ---
         tk.Label(self.scrollable_content, text="Agent Overview", font=("Arial", 11, "bold"), bg="#f0f0f0").pack(fill=tk.X, pady=(15, 2))
@@ -431,11 +435,24 @@ class GraphBuilderApp:
             
             try: eig_c = nx.eigenvector_centrality(self.G, max_iter=100, tol=1e-04).get(self.inspected_node, 0)
             except: eig_c = 0.0
+
+            try: 
+                # Betweenness finds "Bottlenecks"
+                bet_c = nx.betweenness_centrality(self.G)[self.inspected_node]
+            except: bet_c = 0.0
+
+            try:
+                # PageRank finds "Importance"
+                page_r = nx.pagerank(self.G).get(self.inspected_node, 0)
+            except: page_r = 0.0
             
             stat_txt = (f"In-Degree:     {in_d}\n"
                         f"Out-Degree:    {out_d}\n"
                         f"Degree Cent.:  {deg_c:.3f}\n"
-                        f"Eigenvector:   {eig_c:.3f}")
+                        f"Eigenvector:   {eig_c:.3f}\n"
+                        f"Betweenness:   {bet_c:.3f}\n"
+                        f"PageRank:   {page_r:.3f}\n"
+                        )
             
             tk.Label(r3, text=stat_txt, bg="#fff8e1", justify=tk.LEFT, font=("Consolas", 10)).pack(anchor="w")
 

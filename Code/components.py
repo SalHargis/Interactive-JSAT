@@ -1,5 +1,5 @@
 # components.py
-# Contains your custom UI widgets. The InteractiveComparisonPanel is isolated here. 
+# Contains custom UI widgets. The InteractiveComparisonPanel is isolated here. 
 # This makes it reusable and easier to fix drawing bugs.
 
 import tkinter as tk
