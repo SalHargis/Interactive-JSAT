@@ -1,6 +1,5 @@
 # config.py
-# Stores all your "Magic Numbers" and settings. If you want to change the layer names, heights, or default colors, 
-# you do it here without touching the logic code.
+# Stores all your "Magic Numbers" and settings.
 
 # --- Graph Settings ---
 NODE_RADIUS = 20
@@ -17,7 +16,7 @@ VIEW_MODE_JSAT = "JSAT"
 # --- JSAT Layer Definitions ---
 # Defines the Y-coordinate for each layer
 JSAT_LAYERS = {
-    "Synchronicity Functions": 100,
+    "Synchrony": 100,               # Matches JSON "SynchronyFunction"
     "Coordination Grounding": 250,
     "Distributed Work": 400,
     "Base Environment": 550
@@ -25,7 +24,7 @@ JSAT_LAYERS = {
 
 # Defines the order in which they appear (Top to Bottom)
 LAYER_ORDER = [
-    "Synchronicity Functions", 
+    "Synchrony",                    # Matches JSON "SynchronyFunction"
     "Coordination Grounding", 
     "Distributed Work", 
     "Base Environment"

@@ -654,38 +654,175 @@ class GraphBuilderApp:
         self.finalize_json_save(self.G, "curr")
         
     def finalize_json_save(self, g, n):
-        # Bake in layer data before saving so visual state persists
-        for node_id in g.nodes:
-            data = g.nodes[node_id]
-            if 'layer' not in data:
-                data['layer'] = self.get_node_layer(data)
-
+        # ask for file location
         fp = filedialog.asksaveasfilename(initialfile=n, defaultextension=".json")
-        if fp: 
-            with open(fp, 'w') as f: 
-                json.dump({
-                    "graph_data": nx.node_link_data(g),
-                    "agents": self.agents
-                }, f, indent=4)
+        if not fp: return
+
+        # build nodes dictionary
+        nodes_dict = {}
+        
+        # Pre-calculate Agent Authorities (Which agent owns which node label?)
+        agent_authorities = {name: [] for name in self.agents.keys()}
+
+        for nid, d in g.nodes(data=True):
+            label = d.get('label', f"Node_{nid}")
+            layer = d.get('layer', "Base Environment")
+            n_type = d.get('type', "Function")
+            
+            # Format Type string: e.g. "Distributed Work" -> "DistributedWork"
+            formatted_layer = layer.replace(" ", "")
+            combined_type = f"{formatted_layer}{n_type}" # e.g., "DistributedWorkFunction"
+            
+            nodes_dict[label] = {
+                "Type": combined_type,
+                "UserData": label
+            }
+
+            # Add to agent authority list
+            agent_name = d.get('agent', 'Unassigned')
+            if agent_name in agent_authorities:
+                agent_authorities[agent_name].append(label)
+
+        # Build the edge list
+        edges_list = []
+        for u, v in g.edges():
+            u_lbl = g.nodes[u].get('label', f"Node_{u}")
+            v_lbl = g.nodes[v].get('label', f"Node_{v}")
+            
+            edges_list.append({
+                "Source": u_lbl,
+                "Target": v_lbl,
+                "UserData": {"QOS": ""}
+            })
+
+        # Build the agents dictionary
+        agents_dict = {}
+        for name, _ in self.agents.items():
+            agents_dict[name] = {
+                "Authority": agent_authorities.get(name, [])
+            }
+
+        # Construct Final JSON Structure
+        final_data = {
+            "GraphData": {
+                "Nodes": nodes_dict,
+                "Edges": edges_list,
+                "Agents": agents_dict
+            }
+        }
+
+        # Save to Disk
+        with open(fp, 'w') as f:
+            json.dump(final_data, f, indent=4)
                 
     def load_from_json(self):
         fp = filedialog.askopenfilename()
-        if fp:
-            with open(fp, 'r') as f: 
-                b = json.load(f)
-            self.save_state()
-            self.agents = b.get("agents", {})
-            self.G = nx.node_link_graph(b["graph_data"], directed=True)
-            
-            # Ensure tuples (json lists -> python tuples)
-            for n in self.G.nodes: 
-                self.G.nodes[n]['pos'] = tuple(self.G.nodes[n]['pos'])
-            
-            # Map string IDs back to ints if possible
-            mapping = {n: int(n) for n in self.G.nodes() if str(n).isdigit()}
-            self.G = nx.relabel_nodes(self.G, mapping)
-            self.redraw()
+        if not fp: return
+        
+        try:
+            # Use 'utf-8-sig' to handle potential invisible characters
+            with open(fp, 'r', encoding='utf-8-sig') as f:
+                data = json.load(f)
+                
+            if "GraphData" not in data:
+                messagebox.showerror("Error", "Invalid file format: Missing 'GraphData' key.")
+                return
 
+            self.save_state()
+            self.G.clear()
+            self.agents = config.DEFAULT_AGENTS.copy()
+            
+            graph_data = data["GraphData"]
+            
+            # --- 1. Load Agents ---
+            raw_agents = graph_data.get("Agents", {})
+            import random
+            
+            def get_random_color():
+                return "#" + ''.join([random.choice('ABCDEF89') for _ in range(6)])
+
+            label_to_agent = {} 
+            
+            for agent_name, agent_data in raw_agents.items():
+                if agent_name not in self.agents:
+                    self.agents[agent_name] = get_random_color()
+                
+                for node_label in agent_data.get("Authority", []):
+                    label_to_agent[node_label] = agent_name
+
+            # --- 2. Load Nodes ---
+            nodes_data = graph_data.get("Nodes", {})
+            label_to_id = {} 
+            
+            # Initialize counters for all known layers
+            layer_x_counters = {l: 100 for l in config.LAYER_ORDER}
+            
+            for i, (label_key, node_props) in enumerate(nodes_data.items()):
+                combined_type = node_props.get("Type", "BaseEnvironmentResource")
+                user_data_lbl = node_props.get("UserData", label_key)
+                
+                # --- PARSING LOGIC START ---
+                node_type = "Resource" # Default
+                layer_prefix = combined_type
+                
+                # 1. Determine Type (Function vs Resource)
+                if combined_type.endswith("Function"):
+                    node_type = "Function"
+                    layer_prefix = combined_type.replace("Function", "")
+                elif combined_type.endswith("Resource"):
+                    node_type = "Resource"
+                    layer_prefix = combined_type.replace("Resource", "")
+                
+                # 2. Determine Layer
+                # We normalize both strings to ignore spaces and casing for comparison
+                # e.g. "DistributedWork" matches "Distributed Work"
+                node_layer = "Base Environment" # Default fallback
+                
+                normalized_prefix = layer_prefix.lower().replace(" ", "")
+                
+                for known_layer in config.LAYER_ORDER:
+                    normalized_known = known_layer.lower().replace(" ", "")
+                    if normalized_known == normalized_prefix:
+                        node_layer = known_layer
+                        break
+                # --- PARSING LOGIC END ---
+
+                # Safety check: if layer not in counters, init it
+                if node_layer not in layer_x_counters:
+                    layer_x_counters[node_layer] = 100
+
+                pos_y = config.JSAT_LAYERS.get(node_layer, 550)
+                pos_x = layer_x_counters[node_layer]
+                layer_x_counters[node_layer] += 120 
+                
+                assigned_agent = label_to_agent.get(label_key, "Unassigned")
+                
+                self.G.add_node(i, 
+                                pos=(pos_x, pos_y), 
+                                layer=node_layer, 
+                                type=node_type, 
+                                label=user_data_lbl, 
+                                agent=assigned_agent)
+                
+                label_to_id[label_key] = i
+
+            # --- 3. Load Edges ---
+            edges_data = graph_data.get("Edges", [])
+            for edge in edges_data:
+                src_lbl = edge.get("Source")
+                tgt_lbl = edge.get("Target")
+                
+                if src_lbl in label_to_id and tgt_lbl in label_to_id:
+                    u = label_to_id[src_lbl]
+                    v = label_to_id[tgt_lbl]
+                    self.G.add_edge(u, v)
+                    
+            self.redraw()
+            
+        except Exception as e:
+            messagebox.showerror("Critical Error", f"Failed to load file:\n{str(e)}")
+            print(f"Full error: {e}")
+            
     def save_architecture_internal(self):
         n = simpledialog.askstring("Name", "Name:")
         if n: 
