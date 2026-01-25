@@ -1,0 +1,227 @@
+{
+    "GraphData": {
+        "Nodes": {
+            "PathRedirecting": {
+                "Type": "SynchronyFunction",
+                "UserData": "PathRedirecting"
+            },
+            "MonitoringVideo": {
+                "Type": "SynchronyFunction",
+                "UserData": "MonitoringVideo"
+            },
+            "SelectPointsOfInterest": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "SelectPointsOfInterest"
+            },
+            "RobotPathPlanning": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "RobotPathPlanning"
+            },
+            "ImageryCapture": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "ImageryCapture"
+            },
+            "LocationAttAssessment": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "LocationAttAssessment"
+            },
+            "ObstacleLocalization": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "ObstacleLocalization"
+            },
+            "Planned Path": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Planned Path"
+            },
+            "Captured Imagery": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Captured Imagery"
+            },
+            "Robot Location": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Robot Location"
+            },
+            "Obstacle Locations": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Obstacle Locations"
+            },
+            "New Path": {
+                "Type": "CoordinationGroundingResource",
+                "UserData": "New Path"
+            },
+            "Monitored Video": {
+                "Type": "CoordinationGroundingResource",
+                "UserData": "Monitored Video"
+            },
+            "Points of Interest": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Points of Interest"
+            },
+            "Re-Evaluate Goal": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "Re-Evaluate Goal"
+            },
+            "Goal": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Goal"
+            }
+        },
+        "Edges": [
+            {
+                "Source": "PathRedirecting",
+                "Target": "New Path",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "MonitoringVideo",
+                "Target": "Monitored Video",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "SelectPointsOfInterest",
+                "Target": "Points of Interest",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "RobotPathPlanning",
+                "Target": "Planned Path",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "ImageryCapture",
+                "Target": "Captured Imagery",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "LocationAttAssessment",
+                "Target": "Robot Location",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "ObstacleLocalization",
+                "Target": "Obstacle Locations",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "Captured Imagery",
+                "Target": "Re-Evaluate Goal",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "Captured Imagery",
+                "Target": "MonitoringVideo",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "Robot Location",
+                "Target": "RobotPathPlanning",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "Robot Location",
+                "Target": "PathRedirecting",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "Obstacle Locations",
+                "Target": "RobotPathPlanning",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "Obstacle Locations",
+                "Target": "PathRedirecting",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "New Path",
+                "Target": "RobotPathPlanning",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "Monitored Video",
+                "Target": "SelectPointsOfInterest",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "Re-Evaluate Goal",
+                "Target": "Goal",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "Goal",
+                "Target": "RobotPathPlanning",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "Goal",
+                "Target": "PathRedirecting",
+                "UserData": {
+                    "QOS": ""
+                }
+            }
+        ],
+        "Agents": {
+            "Unassigned": {
+                "Authority": []
+            },
+            "Autonomous Robot": {
+                "Authority": [
+                    "SelectPointsOfInterest",
+                    "RobotPathPlanning",
+                    "ImageryCapture",
+                    "LocationAttAssessment",
+                    "ObstacleLocalization",
+                    "Planned Path",
+                    "Captured Imagery",
+                    "Robot Location",
+                    "Obstacle Locations",
+                    "Points of Interest",
+                    "Re-Evaluate Goal",
+                    "Goal"
+                ]
+            },
+            "Human Team": {
+                "Authority": [
+                    "PathRedirecting",
+                    "MonitoringVideo",
+                    "New Path",
+                    "Monitored Video"
+                ]
+            }
+        }
+    }
+}

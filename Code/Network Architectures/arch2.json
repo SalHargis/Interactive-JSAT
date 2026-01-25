@@ -1,121 +1,99 @@
 {
-    "graph_data": {
-        "directed": true,
-        "multigraph": false,
-        "graph": {},
-        "nodes": [
+    "GraphData": {
+        "Nodes": {
+            "move": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "move"
+            },
+            "monitor": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "monitor"
+            },
+            "detect": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "detect"
+            },
+            "Res": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Res"
+            },
+            "F": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "F"
+            },
+            "R": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "R"
+            }
+        },
+        "Edges": [
             {
-                "pos": [
-                    172,
-                    135
-                ],
-                "type": "Function",
-                "agent": "command",
-                "label": "move",
-                "id": 0
+                "Source": "move",
+                "Target": "Res",
+                "UserData": {
+                    "QOS": ""
+                }
             },
             {
-                "pos": [
-                    186,
-                    280
-                ],
-                "type": "Function",
-                "agent": "drone",
-                "label": "monitor",
-                "id": 1
+                "Source": "monitor",
+                "Target": "Res",
+                "UserData": {
+                    "QOS": ""
+                }
             },
             {
-                "pos": [
-                    296,
-                    165
-                ],
-                "type": "Function",
-                "agent": "command",
-                "label": "detect",
-                "id": 2
+                "Source": "detect",
+                "Target": "Res",
+                "UserData": {
+                    "QOS": ""
+                }
             },
             {
-                "pos": [
-                    378,
-                    52
-                ],
-                "type": "Resource",
-                "agent": "sal",
-                "label": "Res",
-                "id": 3
+                "Source": "Res",
+                "Target": "F",
+                "UserData": {
+                    "QOS": ""
+                }
             },
             {
-                "pos": [
-                    398,
-                    179
-                ],
-                "type": "Resource",
-                "agent": "sal",
-                "label": "Res",
-                "id": 4
+                "Source": "Res",
+                "Target": "F",
+                "UserData": {
+                    "QOS": ""
+                }
             },
             {
-                "pos": [
-                    410,
-                    273
-                ],
-                "type": "Resource",
-                "agent": "drone",
-                "label": "Res",
-                "id": 5
-            },
-            {
-                "pos": [
-                    586,
-                    165
-                ],
-                "type": "Function",
-                "agent": "sal",
-                "label": "F",
-                "id": 6
-            },
-            {
-                "pos": [
-                    673,
-                    95
-                ],
-                "type": "Resource",
-                "agent": "sal",
-                "label": "R",
-                "id": 7
+                "Source": "F",
+                "Target": "R",
+                "UserData": {
+                    "QOS": ""
+                }
             }
         ],
-        "edges": [
-            {
-                "source": 0,
-                "target": 3
+        "Agents": {
+            "Unassigned": {
+                "Authority": []
             },
-            {
-                "source": 1,
-                "target": 5
+            "sal": {
+                "Authority": [
+                    "monitor",
+                    "Res",
+                    "Res",
+                    "F",
+                    "R"
+                ]
             },
-            {
-                "source": 2,
-                "target": 4
+            "command": {
+                "Authority": [
+                    "move",
+                    "detect"
+                ]
             },
-            {
-                "source": 3,
-                "target": 6
-            },
-            {
-                "source": 4,
-                "target": 6
-            },
-            {
-                "source": 6,
-                "target": 7
+            "drone": {
+                "Authority": [
+                    "Res"
+                ]
             }
-        ]
-    },
-    "agents": {
-        "Unassigned": "white",
-        "sal": "red",
-        "drone": "green",
-        "command": "yellow"
+        }
     }
 }

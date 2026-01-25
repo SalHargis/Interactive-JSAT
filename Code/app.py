@@ -440,18 +440,12 @@ class GraphBuilderApp:
                 # Betweenness finds "Bottlenecks"
                 bet_c = nx.betweenness_centrality(self.G)[self.inspected_node]
             except: bet_c = 0.0
-
-            try:
-                # PageRank finds "Importance"
-                page_r = nx.pagerank(self.G).get(self.inspected_node, 0)
-            except: page_r = 0.0
             
             stat_txt = (f"In-Degree:     {in_d}\n"
                         f"Out-Degree:    {out_d}\n"
                         f"Degree Cent.:  {deg_c:.3f}\n"
                         f"Eigenvector:   {eig_c:.3f}\n"
                         f"Betweenness:   {bet_c:.3f}\n"
-                        f"PageRank:   {page_r:.3f}\n"
                         )
             
             tk.Label(r3, text=stat_txt, bg="#fff8e1", justify=tk.LEFT, font=("Consolas", 10)).pack(anchor="w")
@@ -863,12 +857,14 @@ class GraphBuilderApp:
     def launch_compare(self, gs):
         w = Toplevel(self.root)
         w.title("Comparative Analytics")
-        w.geometry("1200x800")
+        w.geometry("1400x900") # Slightly wider to accommodate new columns
         w.update_idletasks()
         
+        # Top Frame for System Metrics
         tf = tk.Frame(w, bd=2, relief=tk.RAISED)
         tf.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
         
+        # Paned Window for Graphs vs Inspector
         paned = tk.PanedWindow(w, orient=tk.VERTICAL)
         paned.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
@@ -876,29 +872,47 @@ class GraphBuilderApp:
         paned.add(graph_container, minsize=400)
         
         inspector_frame = tk.Frame(paned, bd=2, relief=tk.SUNKEN, bg="#f0f0f0")
-        paned.add(inspector_frame, minsize=150)
+        paned.add(inspector_frame, minsize=200)
 
         def refresh_metrics():
+            # Clear previous widgets
             for widget in tf.winfo_children(): widget.destroy()
             tk.Label(tf, text="System Metrics Comparison", font=("Arial", 12, "bold")).pack(pady=5)
             
             grid_f = tk.Frame(tf)
-            grid_f.pack(fill=tk.X)
+            grid_f.pack(fill=tk.X, padx=10)
             
-            metrics = ["Nodes", "Edges", "Density", "Avg Degree", "Avg Clustering"]
-            tk.Label(grid_f, text="Metric", font=("Arial", 10, "bold"), width=15, relief="solid", bd=1).grid(row=0, column=0, sticky="nsew")
+            # --- 1. Define Global Metrics List (Matched to Main Dashboard) ---
+            metrics = [
+                "Nodes", 
+                "Edges", 
+                "Density", 
+                "Avg Clustering",
+                "Cyclomatic Number",
+                "Critical Loop Nodes",
+                "Total Cycles",
+                "Interdependence"
+            ]
             
+            # Header Column
+            tk.Label(grid_f, text="Metric", font=("Arial", 10, "bold"), width=18, relief="solid", bd=1, bg="#e0e0e0").grid(row=0, column=0, sticky="nsew")
+            
+            # Network Name Headers
             for i, (name, _) in enumerate(gs):
-                tk.Label(grid_f, text=name, font=("Arial", 10, "bold"), width=15, relief="solid", bd=1).grid(row=0, column=i+1, sticky="nsew")
+                tk.Label(grid_f, text=name, font=("Arial", 10, "bold"), width=15, relief="solid", bd=1, bg="#e0e0e0").grid(row=0, column=i+1, sticky="nsew")
                 
+            # Fill Data
             for r, m in enumerate(metrics):
-                tk.Label(grid_f, text=m, font=("Arial", 10), relief="solid", bd=1).grid(row=r+1, column=0, sticky="nsew")
+                tk.Label(grid_f, text=m, font=("Arial", 10), relief="solid", bd=1, anchor="w", padx=5).grid(row=r+1, column=0, sticky="nsew")
                 for c, (_, g) in enumerate(gs):
+                    # Use calculate_metric utility just like main window
                     val = calculate_metric(g, m)
                     tk.Label(grid_f, text=str(val), relief="solid", bd=1).grid(row=r+1, column=c+1, sticky="nsew")
 
         def refresh_inspector(label):
+            # Clear previous widgets
             for widget in inspector_frame.winfo_children(): widget.destroy()
+            
             if not label:
                 tk.Label(inspector_frame, text="Click a node to inspect across networks.", bg="#f0f0f0", font=("Arial", 12)).pack(pady=20)
                 return
@@ -907,12 +921,25 @@ class GraphBuilderApp:
             grid_f = tk.Frame(inspector_frame, bg="#f0f0f0")
             grid_f.pack(padx=10, pady=5)
             
-            headers = ["Network", "Agent", "In-Degree", "Out-Degree", "Degree Cent.", "Eigenvector Cent."]
-            for i, h in enumerate(headers):
-                tk.Label(grid_f, text=h, font=("Arial", 10, "bold"), bg="#ddd", relief="solid", bd=1, width=18).grid(row=0, column=i, sticky="nsew")
+            # --- 2. Define Node Metrics List (Matched to Main Inspector) ---
+            headers = [
+                "Network", 
+                "Agent", 
+                "In-Degree", 
+                "Out-Degree", 
+                "Degree Cent.", 
+                "Eigenvector",
+                "Betweenness",
+            ]
             
+            # Draw Headers
+            for i, h in enumerate(headers):
+                tk.Label(grid_f, text=h, font=("Arial", 9, "bold"), bg="#ddd", relief="solid", bd=1, width=14).grid(row=0, column=i, sticky="nsew")
+            
+            # Calculate and Draw Rows
             for r, (name, g) in enumerate(gs):
                 target_node = None
+                # Find the node ID by label in this specific graph
                 for n, d in g.nodes(data=True):
                     if d.get('label') == label:
                         target_node = n
@@ -924,24 +951,37 @@ class GraphBuilderApp:
                     vals.append(d.get('agent', 'N/A'))
                     vals.append(g.in_degree(target_node))
                     vals.append(g.out_degree(target_node))
+                    
+                    # Degree Centrality
                     try: dc = f"{nx.degree_centrality(g)[target_node]:.3f}"
                     except: dc = "0.00"
                     vals.append(dc)
-                    try: ec = f"{nx.eigenvector_centrality(g, max_iter=500).get(target_node, 0):.3f}"
+                    
+                    # Eigenvector
+                    try: ec = f"{nx.eigenvector_centrality(g, max_iter=500, tol=1e-04).get(target_node, 0):.3f}"
                     except: ec = "0.00"
                     vals.append(ec)
+
+                    # Betweenness (Added)
+                    try: bc = f"{nx.betweenness_centrality(g)[target_node]:.3f}"
+                    except: bc = "0.00"
+                    vals.append(bc)
+
                 else:
-                    vals.extend(["(Not Found)", "-", "-", "-", "-"])
+                    # If node doesn't exist in this graph variation
+                    vals.extend(["(Not Found)", "-", "-", "-", "-", "-", "-"])
                 
+                # Render Row
                 for c, v in enumerate(vals):
                     tk.Label(grid_f, text=str(v), relief="solid", bd=1, bg="white").grid(row=r+1, column=c, sticky="nsew")
 
+        # Initial Render
         refresh_metrics()
         refresh_inspector(None)
         
+        # Load interactive graph panels
         for n, g in gs:
             InteractiveComparisonPanel(graph_container, g, n, config.NODE_RADIUS, self.agents, None, refresh_inspector)
-
     # --- Helpers ---
 
     def get_layer_from_y(self, y):
