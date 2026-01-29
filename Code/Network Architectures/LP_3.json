@@ -1,0 +1,75 @@
+{
+    "GraphData": {
+        "Nodes": {
+            "RobotPathPlanning": { "Type": "DistributedWorkFunction", "UserData": "RobotPathPlanning" },
+            "InternalStateProcessing": { "Type": "DistributedWorkFunction", "UserData": "InternalStateProcessing" },
+            "ThresholdMonitoring": { "Type": "DistributedWorkFunction", "UserData": "ThresholdMonitoring" },
+            "PathRedirecting": { "Type": "SynchronyFunction", "UserData": "PathRedirecting" },
+            "ImageryCapturing": { "Type": "DistributedWorkFunction", "UserData": "ImageryCapturing" },
+            "ObstacleLocalizing": { "Type": "DistributedWorkFunction", "UserData": "ObstacleLocalizing" },
+            "LocationAssessing": { "Type": "DistributedWorkFunction", "UserData": "LocationAssessing" },
+            "MapNavigationPlanning": { "Type": "DistributedWorkFunction", "UserData": "MapNavigationPlanning" },
+            "SelectingPointsOfInterest": { "Type": "DistributedWorkFunction", "UserData": "SelectingPointsOfInterest" },
+            "MonitoringVideo": { "Type": "DistributedWorkFunction", "UserData": "MonitoringVideo" },
+            
+            "ManualTranscribing": { "Type": "DistributedWorkFunction", "UserData": "ManualTranscribing" },
+            "RuntimeCrashing": { "Type": "DistributedWorkFunction", "UserData": "RuntimeCrashing" },
+
+            "Fixed Mission Orders": { "Type": "BaseEnvironmentResource", "UserData": "Fixed Mission Orders" },
+            "Internal World Model": { "Type": "BaseEnvironmentResource", "UserData": "Internal World Model" },
+            "Calculated Trajectory": { "Type": "BaseEnvironmentResource", "UserData": "Calculated Trajectory" },
+            "Final Status Indicator": { "Type": "BaseEnvironmentResource", "UserData": "Final Status Indicator" },
+            "Generic Alarm": { "Type": "CoordinationGroundingResource", "UserData": "Generic Alarm" },
+            "Raw Sensor Data": { "Type": "BaseEnvironmentResource", "UserData": "Raw Sensor Data" },
+            "Manual Control Mode": { "Type": "CoordinationGroundingResource", "UserData": "Manual Control Mode" },
+            "System Error": { "Type": "BaseEnvironmentResource", "UserData": "System Error" },
+            "Obstacle Data": { "Type": "BaseEnvironmentResource", "UserData": "Obstacle Data" },
+            "Robot Location": { "Type": "BaseEnvironmentResource", "UserData": "Robot Location" },
+            "Video Feed": { "Type": "BaseEnvironmentResource", "UserData": "Video Feed" },
+            "Paper Map Notes": { "Type": "BaseEnvironmentResource", "UserData": "Paper Map Notes" }
+        },
+        "Edges": [
+            { "Source": "MapNavigationPlanning", "Target": "Paper Map Notes", "UserData": { "QOS": "Dead End Data" } },
+            { "Source": "SelectingPointsOfInterest", "Target": "Paper Map Notes", "UserData": { "QOS": "" } },
+            { "Source": "Paper Map Notes", "Target": "ManualTranscribing", "UserData": { "QOS": "Busy Work" } },
+            { "Source": "ManualTranscribing", "Target": "Fixed Mission Orders", "UserData": { "QOS": "" } },
+            
+            { "Source": "Fixed Mission Orders", "Target": "RobotPathPlanning", "UserData": { "QOS": "" } },
+            
+            { "Source": "ImageryCapturing", "Target": "Raw Sensor Data", "UserData": { "QOS": "" } },
+            { "Source": "ObstacleLocalizing", "Target": "Obstacle Data", "UserData": { "QOS": "" } },
+            
+            { "Source": "Raw Sensor Data", "Target": "InternalStateProcessing", "UserData": { "QOS": "" } },
+            { "Source": "Obstacle Data", "Target": "InternalStateProcessing", "UserData": { "QOS": "" } },
+            
+            { "Source": "InternalStateProcessing", "Target": "Internal World Model", "UserData": { "QOS": "Hidden" } },
+            { "Source": "Internal World Model", "Target": "RobotPathPlanning", "UserData": { "QOS": "" } },
+            
+            { "Source": "RobotPathPlanning", "Target": "Calculated Trajectory", "UserData": { "QOS": "" } },
+            { "Source": "Calculated Trajectory", "Target": "ThresholdMonitoring", "UserData": { "QOS": "" } },
+            { "Source": "Calculated Trajectory", "Target": "RuntimeCrashing", "UserData": { "QOS": "" } },
+            
+            { "Source": "ThresholdMonitoring", "Target": "Final Status Indicator", "UserData": { "QOS": "Green/Red Light" } },
+            { "Source": "ThresholdMonitoring", "Target": "Generic Alarm", "UserData": { "QOS": "Late Notification" } },
+            
+            { "Source": "Generic Alarm", "Target": "PathRedirecting", "UserData": { "QOS": "Panic Switch" } },
+            { "Source": "PathRedirecting", "Target": "Manual Control Mode", "UserData": { "QOS": "Full Manual" } },
+            { "Source": "Manual Control Mode", "Target": "RobotPathPlanning", "UserData": { "QOS": "Override" } },
+            
+            { "Source": "RuntimeCrashing", "Target": "System Error", "UserData": { "QOS": "Brittleness" } },
+            
+            { "Source": "LocationAssessing", "Target": "Robot Location", "UserData": { "QOS": "" } },
+            { "Source": "ImageryCapturing", "Target": "Video Feed", "UserData": { "QOS": "" } },
+            { "Source": "Robot Location", "Target": "MonitoringVideo", "UserData": { "QOS": "Split Attention" } },
+            { "Source": "Video Feed", "Target": "MonitoringVideo", "UserData": { "QOS": "" } }
+        ],
+        "Agents": {
+            "Autonomous Robot": {
+                "Authority": [ "RobotPathPlanning", "InternalStateProcessing", "ThresholdMonitoring", "ImageryCapturing", "ObstacleLocalizing", "LocationAssessing", "RuntimeCrashing", "Internal World Model", "Calculated Trajectory", "Raw Sensor Data", "System Error", "Obstacle Data", "Robot Location", "Video Feed" ]
+            },
+            "Human Team": {
+                "Authority": [ "MapNavigationPlanning", "SelectingPointsOfInterest", "PathRedirecting", "MonitoringVideo", "ManualTranscribing", "Fixed Mission Orders", "Final Status Indicator", "Generic Alarm", "Manual Control Mode", "Paper Map Notes" ]
+            }
+        }
+    }
+}

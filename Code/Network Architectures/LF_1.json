@@ -1,0 +1,189 @@
+{
+    "GraphData": {
+        "Nodes": {
+            "ImageryCapture": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "ImageryCapture"
+            },
+            "SensorFusion": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "SensorFusion"
+            },
+            "LocationAttAssessment": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "LocationAttAssessment"
+            },
+            "MapNavigationPlanning": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "MapNavigationPlanning"
+            },
+            "SelectPointsOfInterest": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "SelectPointsOfInterest"
+            },
+            "RobotPathPlanning": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "RobotPathPlanning"
+            },
+            "EvaluatePlannedPath": {
+                "Type": "SynchronyFunction",
+                "UserData": "EvaluatePlannedPath"
+            },
+            "Raw Video": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Raw Video"
+            },
+            "Robot Location": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Robot Location"
+            },
+            "Shared Hazard Map": {
+                "Type": "CoordinationGroundingResource",
+                "UserData": "Shared Hazard Map"
+            },
+            "Points of Interest": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Points of Interest"
+            },
+            "Mission Constraints": {
+                "Type": "CoordinationGroundingResource",
+                "UserData": "Mission Constraints"
+            },
+            "Proposed Path": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Proposed Path"
+            },
+            "Verified Path": {
+                "Type": "CoordinationGroundingResource",
+                "UserData": "Verified Path"
+            }
+        },
+        "Edges": [
+            {
+                "Source": "ImageryCapture",
+                "Target": "Raw Video",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "SensorFusion",
+                "Target": "Shared Hazard Map",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "LocationAttAssessment",
+                "Target": "Robot Location",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "MapNavigationPlanning",
+                "Target": "Mission Constraints",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "SelectPointsOfInterest",
+                "Target": "Points of Interest",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "RobotPathPlanning",
+                "Target": "Proposed Path",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "EvaluatePlannedPath",
+                "Target": "Verified Path",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "Raw Video",
+                "Target": "SensorFusion",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "Robot Location",
+                "Target": "SensorFusion",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "Shared Hazard Map",
+                "Target": "SelectPointsOfInterest",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "Points of Interest",
+                "Target": "MapNavigationPlanning",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "Mission Constraints",
+                "Target": "RobotPathPlanning",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "Proposed Path",
+                "Target": "EvaluatePlannedPath",
+                "UserData": {
+                    "QOS": ""
+                }
+            },
+            {
+                "Source": "Verified Path",
+                "Target": "RobotPathPlanning",
+                "UserData": {
+                    "QOS": ""
+                }
+            }
+        ],
+        "Agents": {
+            "Unassigned": {
+                "Authority": []
+            },
+            "Autonomous Robot": {
+                "Authority": [
+                    "ImageryCapture",
+                    "SensorFusion",
+                    "LocationAttAssessment",
+                    "RobotPathPlanning",
+                    "Raw Video",
+                    "Robot Location",
+                    "Shared Hazard Map",
+                    "Proposed Path"
+                ]
+            },
+            "Human Team": {
+                "Authority": [
+                    "MapNavigationPlanning",
+                    "SelectPointsOfInterest",
+                    "EvaluatePlannedPath",
+                    "Points of Interest",
+                    "Mission Constraints",
+                    "Verified Path"
+                ]
+            }
+        }
+    }
+}

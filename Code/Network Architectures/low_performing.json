@@ -1,0 +1,34 @@
+{
+    "GraphData": {
+        "Nodes": {
+            "ComputeTrajectory": { "Type": "DistributedWorkFunction", "UserData": "ComputeTrajectory" },
+            "ObstacleSensing": { "Type": "DistributedWorkFunction", "UserData": "ObstacleSensing" },
+            "ManualWaypointEntry": { "Type": "DistributedWorkFunction", "UserData": "ManualWaypointEntry" },
+            "EmergencyAbort": { "Type": "SynchronyFunction", "UserData": "EmergencyAbort" },
+            "Internal World Model": { "Type": "BaseEnvironmentResource", "UserData": "Internal World Model" },
+            "Final Path": { "Type": "BaseEnvironmentResource", "UserData": "Final Path" },
+            "Abort Signal": { "Type": "CoordinationGroundingResource", "UserData": "Abort Signal" },
+            "Manual Override": { "Type": "CoordinationGroundingResource", "UserData": "Manual Override" }
+        },
+        "Edges": [
+            { "Source": "ObstacleSensing", "Target": "Internal World Model", "UserData": { "QOS": "" } },
+            { "Source": "Internal World Model", "Target": "ComputeTrajectory", "UserData": { "QOS": "" } },
+            { "Source": "ComputeTrajectory", "Target": "Final Path", "UserData": { "QOS": "" } },
+            
+            { "Source": "Final Path", "Target": "EmergencyAbort", "UserData": { "QOS": "Human sees path only at end" } },
+            { "Source": "EmergencyAbort", "Target": "Abort Signal", "UserData": { "QOS": "" } },
+            { "Source": "Abort Signal", "Target": "ComputeTrajectory", "UserData": { "QOS": "Hard Stop" } },
+            
+            { "Source": "ManualWaypointEntry", "Target": "Manual Override", "UserData": { "QOS": "" } },
+            { "Source": "Manual Override", "Target": "ComputeTrajectory", "UserData": { "QOS": "Human takes full control" } }
+        ],
+        "Agents": {
+            "Autonomous Robot": {
+                "Authority": [ "ComputeTrajectory", "ObstacleSensing", "Internal World Model", "Final Path" ]
+            },
+            "Human Team": {
+                "Authority": [ "ManualWaypointEntry", "EmergencyAbort", "Abort Signal", "Manual Override" ]
+            }
+        }
+    }
+}

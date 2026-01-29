@@ -1,0 +1,43 @@
+{
+    "GraphData": {
+        "Nodes": {
+            "MaintainCommonGround": { "Type": "SynchronyFunction", "UserData": "MaintainCommonGround" },
+            "ConflictDetection": { "Type": "SynchronyFunction", "UserData": "ConflictDetection" },
+            "PathNegotiation": { "Type": "SynchronyFunction", "UserData": "PathNegotiation" },
+            "UpdateConstraints": { "Type": "DistributedWorkFunction", "UserData": "UpdateConstraints" },
+            "RobotPathPlanning": { "Type": "DistributedWorkFunction", "UserData": "RobotPathPlanning" },
+            "ImageryCapture": { "Type": "DistributedWorkFunction", "UserData": "ImageryCapture" },
+            "SensorFusion": { "Type": "DistributedWorkFunction", "UserData": "SensorFusion" },
+            "Shared Hazard Map": { "Type": "CoordinationGroundingResource", "UserData": "Shared Hazard Map" },
+            "Mission Constraints": { "Type": "CoordinationGroundingResource", "UserData": "Mission Constraints" },
+            "Proposed Path": { "Type": "BaseEnvironmentResource", "UserData": "Proposed Path" },
+            "Verified Path": { "Type": "CoordinationGroundingResource", "UserData": "Verified Path" },
+            "Raw Video": { "Type": "BaseEnvironmentResource", "UserData": "Raw Video" },
+            "Robot Location": { "Type": "BaseEnvironmentResource", "UserData": "Robot Location" }
+        },
+        "Edges": [
+            { "Source": "ImageryCapture", "Target": "Raw Video", "UserData": { "QOS": "" } },
+            { "Source": "Raw Video", "Target": "MaintainCommonGround", "UserData": { "QOS": "" } },
+            { "Source": "SensorFusion", "Target": "Shared Hazard Map", "UserData": { "QOS": "" } },
+            { "Source": "MaintainCommonGround", "Target": "Shared Hazard Map", "UserData": { "QOS": "Human Input to Shared Map" } },
+            { "Source": "UpdateConstraints", "Target": "Mission Constraints", "UserData": { "QOS": "" } },
+            { "Source": "Mission Constraints", "Target": "RobotPathPlanning", "UserData": { "QOS": "" } },
+            { "Source": "Shared Hazard Map", "Target": "RobotPathPlanning", "UserData": { "QOS": "" } },
+            { "Source": "RobotPathPlanning", "Target": "Proposed Path", "UserData": { "QOS": "" } },
+            { "Source": "Proposed Path", "Target": "ConflictDetection", "UserData": { "QOS": "" } },
+            { "Source": "Mission Constraints", "Target": "ConflictDetection", "UserData": { "QOS": "" } },
+            { "Source": "ConflictDetection", "Target": "PathNegotiation", "UserData": { "QOS": "" } },
+            { "Source": "PathNegotiation", "Target": "Verified Path", "UserData": { "QOS": "" } },
+            { "Source": "Verified Path", "Target": "RobotPathPlanning", "UserData": { "QOS": "Feedback Loop" } },
+            { "Source": "Robot Location", "Target": "MaintainCommonGround", "UserData": { "QOS": "" } }
+        ],
+        "Agents": {
+            "Autonomous Robot": {
+                "Authority": [ "RobotPathPlanning", "ImageryCapture", "SensorFusion", "ConflictDetection", "Robot Location", "Proposed Path" ]
+            },
+            "Human Team": {
+                "Authority": [ "MaintainCommonGround", "UpdateConstraints", "PathNegotiation", "Shared Hazard Map", "Mission Constraints", "Verified Path", "Raw Video" ]
+            }
+        }
+    }
+}

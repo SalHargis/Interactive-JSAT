@@ -1,0 +1,74 @@
+{
+    "GraphData": {
+        "Nodes": {
+            "GoalNegotiating": { "Type": "SynchronyFunction", "UserData": "GoalNegotiating" },
+            "PolicyManaging": { "Type": "SynchronyFunction", "UserData": "PolicyManaging" },
+            "IntentionProjecting": { "Type": "SynchronyFunction", "UserData": "IntentionProjecting" },
+            "AttentionDirecting": { "Type": "SynchronyFunction", "UserData": "AttentionDirecting" },
+            "EvaluatingPlannedPath": { "Type": "SynchronyFunction", "UserData": "EvaluatingPlannedPath" },
+            
+            "RobotPathPlanning": { "Type": "DistributedWorkFunction", "UserData": "RobotPathPlanning" },
+            "FeasibilityChecking": { "Type": "DistributedWorkFunction", "UserData": "FeasibilityChecking" },
+            "ImageryCapturing": { "Type": "DistributedWorkFunction", "UserData": "ImageryCapturing" },
+            "ObstacleLocalizing": { "Type": "DistributedWorkFunction", "UserData": "ObstacleLocalizing" },
+            "LocationAssessing": { "Type": "DistributedWorkFunction", "UserData": "LocationAssessing" },
+            "MapNavigationPlanning": { "Type": "DistributedWorkFunction", "UserData": "MapNavigationPlanning" },
+            "SelectingPointsOfInterest": { "Type": "DistributedWorkFunction", "UserData": "SelectingPointsOfInterest" },
+            "MonitoringVideo": { "Type": "DistributedWorkFunction", "UserData": "MonitoringVideo" },
+
+            "Draft Plan": { "Type": "CoordinationGroundingResource", "UserData": "Draft Plan" },
+            "Shared Mission Goals": { "Type": "CoordinationGroundingResource", "UserData": "Shared Mission Goals" },
+            "Active Policies": { "Type": "CoordinationGroundingResource", "UserData": "Active Policies" },
+            "Proposed Path": { "Type": "CoordinationGroundingResource", "UserData": "Proposed Path" },
+            "Future State Vis": { "Type": "BaseEnvironmentResource", "UserData": "Future State Vis" },
+            "Prioritized Alerts": { "Type": "BaseEnvironmentResource", "UserData": "Prioritized Alerts" },
+            "Raw Sensor Data": { "Type": "BaseEnvironmentResource", "UserData": "Raw Sensor Data" },
+            "Feasibility Report": { "Type": "BaseEnvironmentResource", "UserData": "Feasibility Report" },
+            "Robot Location": { "Type": "BaseEnvironmentResource", "UserData": "Robot Location" },
+            "Obstacle Data": { "Type": "BaseEnvironmentResource", "UserData": "Obstacle Data" },
+            "Evaluation Result": { "Type": "BaseEnvironmentResource", "UserData": "Evaluation Result" }
+        },
+        "Edges": [
+            { "Source": "MapNavigationPlanning", "Target": "Draft Plan", "UserData": { "QOS": "" } },
+            { "Source": "SelectingPointsOfInterest", "Target": "Draft Plan", "UserData": { "QOS": "" } },
+            
+            { "Source": "Draft Plan", "Target": "FeasibilityChecking", "UserData": { "QOS": "" } },
+            { "Source": "FeasibilityChecking", "Target": "Feasibility Report", "UserData": { "QOS": "" } },
+            { "Source": "Feasibility Report", "Target": "GoalNegotiating", "UserData": { "QOS": "" } },
+            { "Source": "GoalNegotiating", "Target": "Shared Mission Goals", "UserData": { "QOS": "Consensus" } },
+            
+            { "Source": "Shared Mission Goals", "Target": "RobotPathPlanning", "UserData": { "QOS": "" } },
+            { "Source": "Active Policies", "Target": "RobotPathPlanning", "UserData": { "QOS": "Bounds" } },
+            
+            { "Source": "ImageryCapturing", "Target": "Raw Sensor Data", "UserData": { "QOS": "" } },
+            { "Source": "LocationAssessing", "Target": "Robot Location", "UserData": { "QOS": "" } },
+            { "Source": "ObstacleLocalizing", "Target": "Obstacle Data", "UserData": { "QOS": "" } },
+            
+            { "Source": "Raw Sensor Data", "Target": "RobotPathPlanning", "UserData": { "QOS": "Direct" } },
+            { "Source": "Robot Location", "Target": "RobotPathPlanning", "UserData": { "QOS": "Direct" } },
+            { "Source": "Obstacle Data", "Target": "RobotPathPlanning", "UserData": { "QOS": "Direct" } },
+            
+            { "Source": "RobotPathPlanning", "Target": "Proposed Path", "UserData": { "QOS": "" } },
+            
+            { "Source": "Proposed Path", "Target": "IntentionProjecting", "UserData": { "QOS": "" } },
+            { "Source": "IntentionProjecting", "Target": "Future State Vis", "UserData": { "QOS": "Anticipation" } },
+            
+            { "Source": "Future State Vis", "Target": "EvaluatingPlannedPath", "UserData": { "QOS": "Human Check" } },
+            { "Source": "EvaluatingPlannedPath", "Target": "Evaluation Result", "UserData": { "QOS": "" } },
+            { "Source": "Evaluation Result", "Target": "PolicyManaging", "UserData": { "QOS": "Correction" } },
+            { "Source": "PolicyManaging", "Target": "Active Policies", "UserData": { "QOS": "" } },
+            
+            { "Source": "Raw Sensor Data", "Target": "AttentionDirecting", "UserData": { "QOS": "" } },
+            { "Source": "AttentionDirecting", "Target": "Prioritized Alerts", "UserData": { "QOS": "Context Sensitive" } },
+            { "Source": "Prioritized Alerts", "Target": "MonitoringVideo", "UserData": { "QOS": "" } }
+        ],
+        "Agents": {
+            "Autonomous Robot": {
+                "Authority": [ "RobotPathPlanning", "FeasibilityChecking", "IntentionProjecting", "ImageryCapturing", "ObstacleLocalizing", "LocationAssessing", "Proposed Path", "Feasibility Report", "Raw Sensor Data", "Obstacle Data", "Robot Location", "Evaluation Result" ]
+            },
+            "Human Team": {
+                "Authority": [ "GoalNegotiating", "PolicyManaging", "AttentionDirecting", "EvaluatingPlannedPath", "MapNavigationPlanning", "SelectingPointsOfInterest", "MonitoringVideo", "Draft Plan", "Shared Mission Goals", "Active Policies", "Future State Vis", "Prioritized Alerts" ]
+            }
+        }
+    }
+}

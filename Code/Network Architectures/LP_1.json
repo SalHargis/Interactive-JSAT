@@ -1,0 +1,53 @@
+{
+    "GraphData": {
+        "Nodes": {
+            "ComputeTrajectory": { "Type": "DistributedWorkFunction", "UserData": "ComputeTrajectory" },
+            "ObstacleSensing": { "Type": "DistributedWorkFunction", "UserData": "ObstacleSensing" },
+            "ManualWaypointEntry": { "Type": "DistributedWorkFunction", "UserData": "ManualWaypointEntry" },
+            "EmergencyAbort": { "Type": "SynchronyFunction", "UserData": "EmergencyAbort" },
+            "SelectPointsOfInterest": { "Type": "DistributedWorkFunction", "UserData": "SelectPointsOfInterest" },
+            "MapNavigationPlanning": { "Type": "DistributedWorkFunction", "UserData": "MapNavigationPlanning" },
+            "LocationAttAssessment": { "Type": "DistributedWorkFunction", "UserData": "LocationAttAssessment" },
+            "ObstacleLocalization": { "Type": "DistributedWorkFunction", "UserData": "ObstacleLocalization" },
+            "MonitoringVideo": { "Type": "DistributedWorkFunction", "UserData": "MonitoringVideo" },
+
+            "Internal World Model": { "Type": "BaseEnvironmentResource", "UserData": "Internal World Model" },
+            "Final Path": { "Type": "BaseEnvironmentResource", "UserData": "Final Path" },
+            "Abort Signal": { "Type": "CoordinationGroundingResource", "UserData": "Abort Signal" },
+            "Manual Override": { "Type": "CoordinationGroundingResource", "UserData": "Manual Override" },
+            "Paper Map Notes": { "Type": "BaseEnvironmentResource", "UserData": "Paper Map Notes" },
+            "Robot Location": { "Type": "BaseEnvironmentResource", "UserData": "Robot Location" },
+            "Raw Obstacle Log": { "Type": "BaseEnvironmentResource", "UserData": "Raw Obstacle Log" },
+            "Video Feed": { "Type": "BaseEnvironmentResource", "UserData": "Video Feed" }
+        },
+        "Edges": [
+            { "Source": "ObstacleSensing", "Target": "Raw Obstacle Log", "UserData": { "QOS": "" } },
+            { "Source": "ObstacleLocalization", "Target": "Raw Obstacle Log", "UserData": { "QOS": "" } },
+            { "Source": "Raw Obstacle Log", "Target": "Internal World Model", "UserData": { "QOS": "" } },
+            { "Source": "Internal World Model", "Target": "ComputeTrajectory", "UserData": { "QOS": "" } },
+            { "Source": "ComputeTrajectory", "Target": "Final Path", "UserData": { "QOS": "" } },
+            
+            { "Source": "Final Path", "Target": "EmergencyAbort", "UserData": { "QOS": "" } },
+            { "Source": "EmergencyAbort", "Target": "Abort Signal", "UserData": { "QOS": "" } },
+            { "Source": "Abort Signal", "Target": "ComputeTrajectory", "UserData": { "QOS": "" } },
+            
+            { "Source": "SelectPointsOfInterest", "Target": "Paper Map Notes", "UserData": { "QOS": "" } },
+            { "Source": "MapNavigationPlanning", "Target": "Paper Map Notes", "UserData": { "QOS": "Dead End Data" } },
+            { "Source": "Paper Map Notes", "Target": "ManualWaypointEntry", "UserData": { "QOS": "Manual Re-entry" } },
+            { "Source": "ManualWaypointEntry", "Target": "Manual Override", "UserData": { "QOS": "" } },
+            { "Source": "Manual Override", "Target": "ComputeTrajectory", "UserData": { "QOS": "" } },
+
+            { "Source": "LocationAttAssessment", "Target": "Robot Location", "UserData": { "QOS": "" } },
+            { "Source": "Robot Location", "Target": "MonitoringVideo", "UserData": { "QOS": "" } },
+            { "Source": "Video Feed", "Target": "MonitoringVideo", "UserData": { "QOS": "" } }
+        ],
+        "Agents": {
+            "Autonomous Robot": {
+                "Authority": [ "ComputeTrajectory", "ObstacleSensing", "ObstacleLocalization", "LocationAttAssessment", "Internal World Model", "Final Path", "Raw Obstacle Log", "Robot Location", "Video Feed" ]
+            },
+            "Human Team": {
+                "Authority": [ "ManualWaypointEntry", "EmergencyAbort", "SelectPointsOfInterest", "MapNavigationPlanning", "MonitoringVideo", "Abort Signal", "Manual Override", "Paper Map Notes" ]
+            }
+        }
+    }
+}

@@ -24,11 +24,12 @@ class InteractiveComparisonPanel:
         self.drag_mode = None 
         self.drag_data = None 
         self.initialized = False
+        self.highlights = []
 
         self.outer = tk.Frame(parent, bd=2, relief=tk.GROOVE)
         self.outer.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-        tk.Label(self.outer, text=name, font=("Arial", 11, "bold"), bg="#ddd").pack(fill=tk.X)
+        tk.Label(self.outer, text=name, font=("Arial", 13, "bold"), bg="#ddd").pack(fill=tk.X)
         self.canvas = tk.Canvas(self.outer, bg="white")
         self.canvas.pack(fill=tk.BOTH, expand=True)
         
@@ -44,6 +45,11 @@ class InteractiveComparisonPanel:
         
         # Resize event for centering
         self.canvas.bind("<Configure>", self.on_resize)
+
+    def set_highlights(self, highlights):
+            """Updates the visual highlights and triggers a redraw."""
+            self.highlights = highlights
+            self.redraw()
 
     def on_resize(self, event):
         if not self.initialized:
@@ -78,6 +84,52 @@ class InteractiveComparisonPanel:
     def redraw(self):
         self.canvas.delete("all")
         r = self.node_radius * self.zoom 
+
+        # --- DRAW GLOW HIGHLIGHTS (With Overlap Support) ---
+        if self.highlights:
+            edge_counts = {} # Track overlaps
+            
+            for h in self.highlights:
+                color = h.get('color', 'yellow')
+                width = h.get('width', 8) * self.zoom
+                
+                # 1. Draw Nodes (Halo) - Unchanged
+                for n in h.get('nodes', []):
+                    wx, wy = self.G.nodes[n].get('pos', (0,0))
+                    sx, sy = self.to_screen(wx, wy)
+                    hr = r + (width / 2) 
+                    self.canvas.create_oval(sx-hr, sy-hr, sx+hr, sy+hr, fill=color, outline=color)
+
+                # 2. Draw Edges (Offset Logic)
+                for u, v in h.get('edges', []):
+                    # Sort to treat A->B and B->A as the same edge
+                    edge_key = tuple(sorted((u, v)))
+                    count = edge_counts.get(edge_key, 0)
+                    edge_counts[edge_key] = count + 1
+                    
+                    # Calculate Offset based on count
+                    offset_step = width / 2
+                    current_offset = (count * width) - offset_step
+                    
+                    p1 = self.G.nodes[u].get('pos', (0,0))
+                    p2 = self.G.nodes[v].get('pos', (0,0))
+                    sx1, sy1 = self.to_screen(p1[0], p1[1])
+                    sx2, sy2 = self.to_screen(p2[0], p2[1])
+                    
+                    # Math: Calculate perpendicular vector
+                    dx, dy = sx2 - sx1, sy2 - sy1
+                    length = math.hypot(dx, dy)
+                    if length == 0: continue
+                    
+                    # Normal vector (-y, x)
+                    nx, ny = -dy / length, dx / length
+                    
+                    # Apply shift
+                    os_x = nx * current_offset
+                    os_y = ny * current_offset
+                    
+                    self.canvas.create_line(sx1+os_x, sy1+os_y, sx2+os_x, sy2+os_y, 
+                                          fill=color, width=width, capstyle=tk.ROUND, joinstyle=tk.ROUND)
         
         # Edges
         for u, v in self.G.edges():
@@ -102,8 +154,9 @@ class InteractiveComparisonPanel:
                 self.canvas.create_oval(sx-r, sy-r, sx+r, sy+r, fill=fill, outline="black")
             
             lbl = d.get('label', '')
-            font_size = max(8, int(10 * self.zoom))
-            self.canvas.create_text(sx, sy, text=lbl, font=("Arial", font_size, "bold"))
+            font_size = max(15, int(10 * self.zoom))
+            label_offset = r + (5*self.zoom)
+            self.canvas.create_text(sx, sy-label_offset, text=lbl, font=("Arial", font_size, "bold",), anchor="s")
 
     def on_zoom(self, event, direction=None):
         if direction is None:

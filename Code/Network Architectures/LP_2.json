@@ -1,0 +1,61 @@
+{
+    "GraphData": {
+        "Nodes": {
+            "RobotPathPlanning": { "Type": "DistributedWorkFunction", "UserData": "RobotPathPlanning" },
+            "ObstacleLocalization": { "Type": "DistributedWorkFunction", "UserData": "ObstacleLocalization" },
+            "ManualWaypointEntry": { "Type": "DistributedWorkFunction", "UserData": "ManualWaypointEntry" },
+            "EmergencyAbort": { "Type": "SynchronyFunction", "UserData": "EmergencyAbort" },
+            "SelectPointsOfInterest": { "Type": "DistributedWorkFunction", "UserData": "SelectPointsOfInterest" },
+            "MapNavigationPlanning": { "Type": "DistributedWorkFunction", "UserData": "MapNavigationPlanning" },
+            "LocationAttAssessment": { "Type": "DistributedWorkFunction", "UserData": "LocationAttAssessment" },
+            "ImageryCapture": { "Type": "DistributedWorkFunction", "UserData": "ImageryCapture" },
+            "MonitoringVideo": { "Type": "DistributedWorkFunction", "UserData": "MonitoringVideo" },
+            
+            "ProcessLog": { "Type": "DistributedWorkFunction", "UserData": "ProcessLog" },
+            "ManualTranscription": { "Type": "DistributedWorkFunction", "UserData": "ManualTranscription" },
+
+            "Internal World Model": { "Type": "BaseEnvironmentResource", "UserData": "Internal World Model" },
+            "Final Path": { "Type": "BaseEnvironmentResource", "UserData": "Final Path" },
+            "Abort Signal": { "Type": "CoordinationGroundingResource", "UserData": "Abort Signal" },
+            "Manual Override": { "Type": "CoordinationGroundingResource", "UserData": "Manual Override" },
+            "Paper Map Notes": { "Type": "BaseEnvironmentResource", "UserData": "Paper Map Notes" },
+            "Robot Location": { "Type": "BaseEnvironmentResource", "UserData": "Robot Location" },
+            "Raw Obstacle Log": { "Type": "BaseEnvironmentResource", "UserData": "Raw Obstacle Log" },
+            "Video Feed": { "Type": "BaseEnvironmentResource", "UserData": "Video Feed" },
+            "Points of Interest": { "Type": "BaseEnvironmentResource", "UserData": "Points of Interest" }
+        },
+        "Edges": [
+            { "Source": "ObstacleLocalization", "Target": "Raw Obstacle Log", "UserData": { "QOS": "" } },
+            { "Source": "Raw Obstacle Log", "Target": "ProcessLog", "UserData": { "QOS": "" } },
+            { "Source": "ProcessLog", "Target": "Internal World Model", "UserData": { "QOS": "" } },
+            { "Source": "Internal World Model", "Target": "RobotPathPlanning", "UserData": { "QOS": "" } },
+            { "Source": "RobotPathPlanning", "Target": "Final Path", "UserData": { "QOS": "" } },
+            
+            { "Source": "Final Path", "Target": "EmergencyAbort", "UserData": { "QOS": "" } },
+            { "Source": "EmergencyAbort", "Target": "Abort Signal", "UserData": { "QOS": "" } },
+            { "Source": "Abort Signal", "Target": "RobotPathPlanning", "UserData": { "QOS": "" } },
+            
+            { "Source": "SelectPointsOfInterest", "Target": "Points of Interest", "UserData": { "QOS": "" } },
+            { "Source": "Points of Interest", "Target": "ManualTranscription", "UserData": { "QOS": "" } },
+            { "Source": "MapNavigationPlanning", "Target": "Paper Map Notes", "UserData": { "QOS": "" } },
+            { "Source": "ManualTranscription", "Target": "Paper Map Notes", "UserData": { "QOS": "" } },
+            
+            { "Source": "Paper Map Notes", "Target": "ManualWaypointEntry", "UserData": { "QOS": "" } },
+            { "Source": "ManualWaypointEntry", "Target": "Manual Override", "UserData": { "QOS": "" } },
+            { "Source": "Manual Override", "Target": "RobotPathPlanning", "UserData": { "QOS": "" } },
+
+            { "Source": "LocationAttAssessment", "Target": "Robot Location", "UserData": { "QOS": "" } },
+            { "Source": "Robot Location", "Target": "MonitoringVideo", "UserData": { "QOS": "" } },
+            { "Source": "ImageryCapture", "Target": "Video Feed", "UserData": { "QOS": "" } },
+            { "Source": "Video Feed", "Target": "MonitoringVideo", "UserData": { "QOS": "" } }
+        ],
+        "Agents": {
+            "Autonomous Robot": {
+                "Authority": [ "RobotPathPlanning", "ObstacleLocalization", "LocationAttAssessment", "ImageryCapture", "ProcessLog", "Internal World Model", "Final Path", "Raw Obstacle Log", "Robot Location", "Video Feed" ]
+            },
+            "Human Team": {
+                "Authority": [ "ManualWaypointEntry", "EmergencyAbort", "SelectPointsOfInterest", "MapNavigationPlanning", "MonitoringVideo", "ManualTranscription", "Abort Signal", "Manual Override", "Paper Map Notes", "Points of Interest" ]
+            }
+        }
+    }
+}

@@ -4,10 +4,10 @@ import networkx as nx
 import math
 import json
 
-# --- Local Modules ---
 import config
 from utils import calculate_metric
 from components import InteractiveComparisonPanel
+import metric_visualizations
 
 class GraphBuilderApp:
     def __init__(self, root):
@@ -29,7 +29,9 @@ class GraphBuilderApp:
         self.is_dragging = False   
         self.pre_drag_graph_state = None
         self.sidebar_drag_data = None
-        
+        self.current_highlights = [] 
+        self.active_vis_mode = None
+
         # --- View Settings ---
         self.zoom = 1.0
         self.offset_x = 0
@@ -273,6 +275,48 @@ class GraphBuilderApp:
 
     def redraw(self):
         self.canvas.delete("all")
+
+        # Add highlight first so it aapear behind the nodes/edges, with overlap highlighting
+        if self.current_highlights:
+            edge_counts = {}
+            
+            for h in self.current_highlights:
+                color = h.get('color', 'yellow')
+                width = h.get('width', 8) * self.zoom
+                
+                # 1. Draw Nodes (Halo) - Moved first to match components.py structure
+                for n in h.get('nodes', []):
+                    wx, wy = self.get_draw_pos(n)
+                    sx, sy = self.to_screen(wx, wy)
+                    rad = (config.NODE_RADIUS * self.zoom) + (width/2)
+                    self.canvas.create_oval(sx-rad, sy-rad, sx+rad, sy+rad, fill=color, outline=color)
+                
+                # 2. Draw Edges (Offset)
+                for u, v in h.get('edges', []):
+                    edge_key = tuple(sorted((u, v)))
+                    count = edge_counts.get(edge_key, 0)
+                    edge_counts[edge_key] = count + 1
+                    
+                    # Calculate Offset
+                    offset_step = width / 2
+                    current_offset = (count * width) - offset_step
+                    
+                    wx1, wy1 = self.get_draw_pos(u)
+                    wx2, wy2 = self.get_draw_pos(v)
+                    sx1, sy1 = self.to_screen(wx1, wy1)
+                    sx2, sy2 = self.to_screen(wx2, wy2)
+                    
+                    dx, dy = sx2 - sx1, sy2 - sy1
+                    length = math.hypot(dx, dy)
+                    if length == 0: continue
+                    
+                    nx, ny = -dy / length, dx / length
+                    
+                    os_x = nx * current_offset
+                    os_y = ny * current_offset
+                    
+                    self.canvas.create_line(sx1+os_x, sy1+os_y, sx2+os_x, sy2+os_y, 
+                                          fill=color, width=width, capstyle=tk.ROUND)
         
         # 1. Draw Layer Lines (JSAT Mode only)
         if self.view_mode == config.VIEW_MODE_JSAT:
@@ -321,10 +365,28 @@ class GraphBuilderApp:
             else:
                 self.canvas.create_oval(sx-r, sy-r, sx+r, sy+r, fill=fill, outline=outline, width=width)
             
-            font_size = max(8, int(10 * self.zoom))
-            self.canvas.create_text(sx, sy, text=d.get('label',''), font=("Arial", font_size, "bold"))
+            font_size = max(15, int(10 * self.zoom))
+            label_offset = r + (5 * self.zoom)
+            self.canvas.create_text(sx, sy-label_offset, text=d.get('label',''), font=("Arial", font_size, "bold"), anchor = "s")
             
         self.rebuild_dashboard()
+
+    def trigger_visual_analytics(self, mode):
+        # Toggle: If clicking same mode, turn off.
+        if self.active_vis_mode == mode:
+            self.current_highlights = []
+            self.active_vis_mode = None
+            self.redraw()
+            return
+
+        self.active_vis_mode = mode
+        
+        if mode == "cycles":
+            self.current_highlights = metric_visualizations.get_cycle_highlights(self.G)
+        elif mode == "interdependence":
+            self.current_highlights = metric_visualizations.get_interdependence_highlights(self.G)
+            
+        self.redraw()
 
     def rebuild_dashboard(self):
         """Refreshes the sidebar. Careful not to duplicate widgets."""
@@ -336,7 +398,7 @@ class GraphBuilderApp:
         for w in self.scrollable_content.winfo_children(): w.destroy()
         
         # --- Stats Section ---
-        tk.Label(self.scrollable_content, text="Network Statistics", font=("Arial", 11, "bold"), bg="#f0f0f0").pack(fill=tk.X, pady=(10, 5))
+        tk.Label(self.scrollable_content, text="Network Statistics", font=("Arial", 14, "bold"), bg="#f0f0f0").pack(fill=tk.X, pady=(10, 5))
         stats_frame = tk.Frame(self.scrollable_content, bg="white", bd=1, relief=tk.SOLID)
         stats_frame.pack(fill=tk.X, padx=5)
         
@@ -344,11 +406,94 @@ class GraphBuilderApp:
         tk.Label(stats_frame, text=f"Avg Clustering: {calculate_metric(self.G, 'Avg Clustering')}", bg="white").pack(anchor="w", padx=5)
         tk.Label(stats_frame, text=f"Cyclomatic No.: {calculate_metric(self.G, 'Cyclomatic Number')}", bg="white").pack(anchor="w", padx=5)
         tk.Label(stats_frame, text=f"Critical Loop Nodes: {calculate_metric(self.G, 'Critical Loop Nodes')}", bg="white").pack(anchor="w", padx=5)
-        tk.Label(stats_frame, text=f"Total Cycles: {calculate_metric(self.G, 'Total Cycles')}", bg="white").pack(anchor="w", padx=5)
-        tk.Label(stats_frame, text=f"Interdependence: {calculate_metric(self.G, 'Interdependence')}", bg="white").pack(anchor="w", padx=5)
+        # Making Total Cycles label a clickable button
+        # tk.Label(stats_frame, text=f"Total Cycles: {calculate_metric(self.G, 'Total Cycles')}", bg="white").pack(anchor="w", padx=5)
+        cyc_val = calculate_metric(self.G, 'Total Cycles')
+        lbl_cyc = tk.Label(stats_frame, text=f"Total Cycles: {cyc_val}", bg="white", cursor="hand2", fg="blue")
+        lbl_cyc.pack(anchor="w", padx=5)
+        lbl_cyc.bind("<Button-1>", lambda e: self.trigger_visual_analytics("cycles"))
+
+        #Making Interdependence a clickable button
+        # tk.Label(stats_frame, text=f"Interdependence: {calculate_metric(self.G, 'Interdependence')}", bg="white").pack(anchor="w", padx=5)
+        int_val = calculate_metric(self.G, 'Interdependence')
+        lbl_int = tk.Label(stats_frame, text=f"Interdependence: {int_val}", bg="white", cursor="hand2", fg="blue")
+        lbl_int.pack(anchor="w", padx=5)
+        lbl_int.bind("<Button-1>", lambda e: self.trigger_visual_analytics("interdependence"))
+
+        # Add click-able buttons for individual cycle highglighting
+        #tk.Label(stats_frame, text=f"Avg Cycle Len: {calculate_metric(self.G, 'Avg Cycle Length')}", bg="white").pack(anchor="w", padx=5)
+        # --- Interactive Avg Cycle Length (Scrollable) ---
+        # 1. Main Container for the Row
+        ac_container = tk.Frame(stats_frame, bg="white")
+        ac_container.pack(fill=tk.X, padx=5, pady=2)
+        
+        try:
+            cycles = list(nx.simple_cycles(self.G))
+            if not cycles:
+                 tk.Label(ac_container, text="Avg Cycle Length: 0.0", bg="white").pack(anchor="w")
+            else:
+                lengths = [len(c) for c in cycles]
+                avg = sum(lengths) / len(lengths)
+                
+                # 2. Fixed Label on Left: "Avg Cycle Length: 4.67 ["
+                tk.Label(ac_container, text=f"Avg Cycle Length: {avg:.2f} [", bg="white").pack(side=tk.LEFT, anchor="n", pady=2)
+                
+                # 3. Scrollable Area for the Numbers
+                scroll_wrapper = tk.Frame(ac_container, bg="white")
+                scroll_wrapper.pack(side=tk.LEFT, fill=tk.X, expand=True, anchor="n")
+
+                # Horizontal Scrollbar
+                h_scroll = tk.Scrollbar(scroll_wrapper, orient=tk.HORIZONTAL)
+                h_scroll.pack(side=tk.BOTTOM, fill=tk.X)
+                
+                # Canvas (Holds the buttons)
+                h_canvas = tk.Canvas(scroll_wrapper, height=25, bg="white", highlightthickness=0, xscrollcommand=h_scroll.set)
+                h_canvas.pack(side=tk.TOP, fill=tk.X, expand=True)
+                h_scroll.config(command=h_canvas.xview)
+                
+                # Inner Frame (Lives inside Canvas)
+                inner_frame = tk.Frame(h_canvas, bg="white")
+                h_canvas.create_window((0, 0), window=inner_frame, anchor="nw")
+                
+                # 4. Interactive Buttons
+                cycle_colors = [
+                    "#FF1493", "#00C000", "#008B8B", "#DAA520", 
+                    "#FF4500", "#9400D3", "#32CD32", "#1E90FF"
+                ]
+
+                for i, length in enumerate(lengths):
+                    txt_color = cycle_colors[i % len(cycle_colors)]
+                    
+                    btn = tk.Label(inner_frame, text=str(length), font=("Arial", 14, "bold"), 
+                                   fg="blue", cursor="hand2", bg="white")
+                    btn.pack(side=tk.LEFT)
+                    btn.bind("<Button-1>", lambda e, idx=i: self.trigger_single_cycle_vis(idx))
+                    
+                    # Add comma
+                    if i < len(lengths) - 1:
+                        tk.Label(inner_frame, text=", ", bg="white").pack(side=tk.LEFT)
+                
+                # Closing Bracket
+                tk.Label(inner_frame, text=" ]", bg="white").pack(side=tk.LEFT)
+                
+                # 5. Update Scroll Region (Crucial step to make scrolling work)
+                inner_frame.update_idletasks()
+                h_canvas.config(scrollregion=h_canvas.bbox("all"))
+                
+                # Optional: Mousewheel scrolling support
+                def _on_scroll(event):
+                    h_canvas.xview_scroll(int(-1*(event.delta/120)), "units")
+                h_canvas.bind("<MouseWheel>", _on_scroll)
+
+        except Exception as e:
+            tk.Label(ac_container, text="Err", bg="white").pack(side=tk.LEFT)
+            print(f"Cycle calc error: {e}")
+
+        tk.Label(stats_frame, text=f"Global Efficiency: {calculate_metric(self.G, 'Global Efficiency')}", bg="white").pack(anchor="w", padx=5)
+        tk.Label(stats_frame, text=f"Modularity: {calculate_metric(self.G, 'Modularity')}", bg="white").pack(anchor="w", padx=5)
 
         # --- Agent Overview Section ---
-        tk.Label(self.scrollable_content, text="Agent Overview", font=("Arial", 11, "bold"), bg="#f0f0f0").pack(fill=tk.X, pady=(15, 2))
+        tk.Label(self.scrollable_content, text="Agent Overview", font=("Arial", 14, "bold"), bg="#f0f0f0").pack(fill=tk.X, pady=(15, 2))
         
         # Controls
         ctrl_frame = tk.Frame(self.scrollable_content, bg="#e0e0e0", bd=1, relief=tk.RAISED)
@@ -448,7 +593,7 @@ class GraphBuilderApp:
                         f"Betweenness:   {bet_c:.3f}\n"
                         )
             
-            tk.Label(r3, text=stat_txt, bg="#fff8e1", justify=tk.LEFT, font=("Consolas", 10)).pack(anchor="w")
+            tk.Label(r3, text=stat_txt, bg="#fff8e1", justify=tk.LEFT, font=("Consolas", 13)).pack(anchor="w")
 
         else:
             tk.Label(self.inspector_frame, text="(Select a node to inspect)", bg="#fff8e1", fg="#888").pack(pady=5)
@@ -874,50 +1019,103 @@ class GraphBuilderApp:
         inspector_frame = tk.Frame(paned, bd=2, relief=tk.SUNKEN, bg="#f0f0f0")
         paned.add(inspector_frame, minsize=200)
 
+        panels = []
+
+        def toggle_compare_vis(metric_name):
+            for name, panel in panels:
+                if metric_name == "Total Cycles":
+                    hl = metric_visualizations.get_cycle_highlights(panel.G)
+                    panel.set_highlights(hl)
+                elif metric_name == "Interdependence":
+                    hl = metric_visualizations.get_interdependence_highlights(panel.G)
+                    panel.set_highlights(hl)
+                else:
+                    panel.set_highlights([]) # Clear
+
         def refresh_metrics():
             # Clear previous widgets
             for widget in tf.winfo_children(): widget.destroy()
-            tk.Label(tf, text="System Metrics Comparison", font=("Arial", 12, "bold")).pack(pady=5)
+            tk.Label(tf, text="System Metrics Comparison", font=("Arial", 16, "bold")).pack(pady=5)
             
             grid_f = tk.Frame(tf)
             grid_f.pack(fill=tk.X, padx=10)
             
-            # --- 1. Define Global Metrics List (Matched to Main Dashboard) ---
-            metrics = [
-                "Nodes", 
-                "Edges", 
-                "Density", 
-                "Avg Clustering",
-                "Cyclomatic Number",
-                "Critical Loop Nodes",
-                "Total Cycles",
-                "Interdependence"
-            ]
+            metrics = ["Nodes", "Edges", "Density", "Avg Clustering", "Cyclomatic Number", 
+                       "Critical Loop Nodes", "Total Cycles", "Avg Cycle Length", 
+                       "Interdependence", "Modularity", "Global Efficiency"]
             
-            # Header Column
-            tk.Label(grid_f, text="Metric", font=("Arial", 10, "bold"), width=18, relief="solid", bd=1, bg="#e0e0e0").grid(row=0, column=0, sticky="nsew")
-            
-            # Network Name Headers
+            # Headers
+            tk.Label(grid_f, text="Metric", font=("Arial", 12, "bold"), width=18, relief="solid", bd=1, bg="#e0e0e0").grid(row=0, column=0, sticky="nsew")
             for i, (name, _) in enumerate(gs):
-                tk.Label(grid_f, text=name, font=("Arial", 10, "bold"), width=15, relief="solid", bd=1, bg="#e0e0e0").grid(row=0, column=i+1, sticky="nsew")
+                tk.Label(grid_f, text=name, font=("Arial", 12, "bold"), width=15, relief="solid", bd=1, bg="#e0e0e0").grid(row=0, column=i+1, sticky="nsew")
                 
-            # Fill Data
+            # Rows
             for r, m in enumerate(metrics):
-                tk.Label(grid_f, text=m, font=("Arial", 10), relief="solid", bd=1, anchor="w", padx=5).grid(row=r+1, column=0, sticky="nsew")
+                # 1. Metric Name Label
+                lbl = tk.Label(grid_f, text=m, font=("Arial", 12), relief="solid", bd=1, anchor="w", padx=5)
+                lbl.grid(row=r+1, column=0, sticky="nsew")
+                
+                # Special clickable handling for Name Column
+                if m in ["Total Cycles", "Interdependence"]:
+                    lbl.config(fg="blue", cursor="hand2")
+                    lbl.bind("<Button-1>", lambda e, name=m: toggle_compare_vis(name))
+
+                # 2. Metric Values (Columns)
                 for c, (_, g) in enumerate(gs):
-                    # Use calculate_metric utility just like main window
-                    val = calculate_metric(g, m)
-                    tk.Label(grid_f, text=str(val), relief="solid", bd=1).grid(row=r+1, column=c+1, sticky="nsew")
+                    
+                    # --- SPECIAL LOGIC FOR AVG CYCLE LENGTH ---
+                    if m == "Avg Cycle Length":
+                        cell_frame = tk.Frame(grid_f, bd=1, relief="solid", bg="#f0f0f0")
+                        cell_frame.grid(row=r+1, column=c+1, sticky="nsew")
+                        
+                        try:
+                            cycles = list(nx.simple_cycles(g))
+                            if not cycles:
+                                tk.Label(cell_frame, text="0.0", font=("Arial", 12), bg="#f0f0f0").pack()
+                            else:
+                                lengths = [len(x) for x in cycles]
+                                avg = sum(lengths) / len(lengths)
+                                
+                                # Display Average
+                                tk.Label(cell_frame, text=f"{avg:.2f} [", font=("Arial", 12), bg="#f0f0f0").pack(side=tk.LEFT)
+                                
+                                # Display Clickable Buttons
+                                for idx, length in enumerate(lengths):
+                                    btn = tk.Label(cell_frame, text=str(length), font=("Arial", 12, "bold"), 
+                                                   fg="blue", cursor="hand2", bg="#f0f0f0")
+                                    btn.pack(side=tk.LEFT)
+                                    
+                                    if idx < len(lengths) - 1:
+                                        tk.Label(cell_frame, text=", ", font=("Arial", 12), bg="#f0f0f0").pack(side=tk.LEFT)
+                                    
+                                    # Handle Click
+                                    def on_cycle_click(e, i=idx, graph=g, panel_idx=c):
+                                        target_panel = panels[panel_idx][1] 
+                                        hl = self.trigger_single_cycle_vis(i, graph)
+                                        target_panel.set_highlights(hl)
+                                        
+                                    btn.bind("<Button-1>", on_cycle_click)
+                                    
+                                tk.Label(cell_frame, text="]", font=("Arial", 12), bg="#f0f0f0").pack(side=tk.LEFT)
+
+                        except Exception as e:
+                            tk.Label(cell_frame, text="Err", font=("Arial", 12)).pack()
+                            print(e)
+                    
+                    # --- STANDARD LOGIC ---
+                    else:
+                        val = calculate_metric(g, m)
+                        tk.Label(grid_f, text=str(val), font=("Arial", 12), relief="solid", bd=1).grid(row=r+1, column=c+1, sticky="nsew")
 
         def refresh_inspector(label):
             # Clear previous widgets
             for widget in inspector_frame.winfo_children(): widget.destroy()
             
             if not label:
-                tk.Label(inspector_frame, text="Click a node to inspect across networks.", bg="#f0f0f0", font=("Arial", 12)).pack(pady=20)
+                tk.Label(inspector_frame, text="Click a node to inspect across networks.", bg="#f0f0f0", font=("Arial", 20)).pack(pady=20)
                 return
             
-            tk.Label(inspector_frame, text=f"Inspecting Node: '{label}'", bg="#f0f0f0", font=("Arial", 12, "bold")).pack(pady=5)
+            tk.Label(inspector_frame, text=f"Inspecting Node: '{label}'", bg="#f0f0f0", font=("Arial", 16, "bold")).pack(pady=5)
             grid_f = tk.Frame(inspector_frame, bg="#f0f0f0")
             grid_f.pack(padx=10, pady=5)
             
@@ -934,7 +1132,7 @@ class GraphBuilderApp:
             
             # Draw Headers
             for i, h in enumerate(headers):
-                tk.Label(grid_f, text=h, font=("Arial", 9, "bold"), bg="#ddd", relief="solid", bd=1, width=14).grid(row=0, column=i, sticky="nsew")
+                tk.Label(grid_f, text=h, font=("Arial", 13, "bold"), bg="#ddd", relief="solid", bd=1, width=14).grid(row=0, column=i, sticky="nsew")
             
             # Calculate and Draw Rows
             for r, (name, g) in enumerate(gs):
@@ -973,7 +1171,7 @@ class GraphBuilderApp:
                 
                 # Render Row
                 for c, v in enumerate(vals):
-                    tk.Label(grid_f, text=str(v), relief="solid", bd=1, bg="white").grid(row=r+1, column=c, sticky="nsew")
+                    tk.Label(grid_f, text=str(v), font=("Arial", 14), relief="solid", bd=1, bg="white").grid(row=r+1, column=c, sticky="nsew")
 
         # Initial Render
         refresh_metrics()
@@ -982,6 +1180,7 @@ class GraphBuilderApp:
         # Load interactive graph panels
         for n, g in gs:
             InteractiveComparisonPanel(graph_container, g, n, config.NODE_RADIUS, self.agents, None, refresh_inspector)
+            panels.append((n, p))
     # --- Helpers ---
 
     def get_layer_from_y(self, y):
@@ -1045,3 +1244,22 @@ class GraphBuilderApp:
             if dist < threshold:
                 return (u, v)
         return None
+
+    def trigger_single_cycle_vis(self, index, graph_source=None):
+        """
+        index: The index of the cycle in the list [0, 1, 2...]
+        graph_source: Used for comparison window to know WHICH graph to highlight
+        """
+        # If no graph provided, use the main self.G
+        target_graph = graph_source if graph_source else self.G
+        
+        hl = metric_visualizations.get_single_cycle_highlight(target_graph, index)
+        
+        if graph_source:
+            # logic for comparison window (handled via callback later)
+            return hl 
+        else:
+            # logic for main window
+            self.current_highlights = hl
+            self.active_vis_mode = f"cycle_{index}"
+            self.redraw()
