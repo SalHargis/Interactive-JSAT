@@ -1179,8 +1179,12 @@ class GraphBuilderApp:
         
         # Load interactive graph panels
         for n, g in gs:
-            InteractiveComparisonPanel(graph_container, g, n, config.NODE_RADIUS, self.agents, None, refresh_inspector)
+            # FIX: Assign the new instance to variable 'p'
+            p = InteractiveComparisonPanel(graph_container, g, n, config.NODE_RADIUS, self.agents, None, refresh_inspector)
+            
+            # Now 'p' exists and can be added to the list
             panels.append((n, p))
+            
     # --- Helpers ---
 
     def get_layer_from_y(self, y):

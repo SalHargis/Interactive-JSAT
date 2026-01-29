@@ -84,30 +84,28 @@ class InteractiveComparisonPanel:
     def redraw(self):
         self.canvas.delete("all")
         r = self.node_radius * self.zoom 
-
-        # --- DRAW GLOW HIGHLIGHTS (With Overlap Support) ---
+        
+        # --- 1. DRAW HIGHLIGHTS (This is the part likely missing) ---
         if self.highlights:
-            edge_counts = {} # Track overlaps
+            edge_counts = {}
             
             for h in self.highlights:
                 color = h.get('color', 'yellow')
                 width = h.get('width', 8) * self.zoom
                 
-                # 1. Draw Nodes (Halo) - Unchanged
+                # Draw Nodes (Halo)
                 for n in h.get('nodes', []):
                     wx, wy = self.G.nodes[n].get('pos', (0,0))
                     sx, sy = self.to_screen(wx, wy)
-                    hr = r + (width / 2) 
-                    self.canvas.create_oval(sx-hr, sy-hr, sx+hr, sy+hr, fill=color, outline=color)
+                    rad = r + (width / 2) 
+                    self.canvas.create_oval(sx-rad, sy-rad, sx+rad, sy+rad, fill=color, outline=color)
 
-                # 2. Draw Edges (Offset Logic)
+                # Draw Edges (Offset)
                 for u, v in h.get('edges', []):
-                    # Sort to treat A->B and B->A as the same edge
                     edge_key = tuple(sorted((u, v)))
                     count = edge_counts.get(edge_key, 0)
                     edge_counts[edge_key] = count + 1
                     
-                    # Calculate Offset based on count
                     offset_step = width / 2
                     current_offset = (count * width) - offset_step
                     
@@ -116,21 +114,18 @@ class InteractiveComparisonPanel:
                     sx1, sy1 = self.to_screen(p1[0], p1[1])
                     sx2, sy2 = self.to_screen(p2[0], p2[1])
                     
-                    # Math: Calculate perpendicular vector
                     dx, dy = sx2 - sx1, sy2 - sy1
                     length = math.hypot(dx, dy)
                     if length == 0: continue
                     
-                    # Normal vector (-y, x)
                     nx, ny = -dy / length, dx / length
-                    
-                    # Apply shift
                     os_x = nx * current_offset
                     os_y = ny * current_offset
                     
                     self.canvas.create_line(sx1+os_x, sy1+os_y, sx2+os_x, sy2+os_y, 
                                           fill=color, width=width, capstyle=tk.ROUND, joinstyle=tk.ROUND)
-        
+
+        # --- 2. DRAW STANDARD GRAPH (Edges & Nodes) ---
         # Edges
         for u, v in self.G.edges():
             p1 = self.G.nodes[u].get('pos', (0,0))
