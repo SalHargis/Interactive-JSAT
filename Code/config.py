@@ -29,3 +29,14 @@ LAYER_ORDER = [
     "Distributed Work", 
     "Base Environment"
 ]
+
+# --- Edge Types ---
+EDGE_TYPE_HARD = "hard"
+EDGE_TYPE_SOFT = "soft"
+
+# --- Visual Styles ---
+HARD_EDGE_COLOR = "black"
+SOFT_EDGE_COLOR = "#999999" # grey
+HARD_EDGE_WIDTH = 2
+SOFT_EDGE_WIDTH = 2
+SOFT_EDGE_DASH = (4, 4) # Dashed line pattern

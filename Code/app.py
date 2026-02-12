@@ -48,6 +48,7 @@ class GraphBuilderApp:
         self.current_agent = config.DEFAULT_CURRENT_AGENT
         
         self.setup_ui()
+        self.edge_view_mode = "ALL"
         
     def setup_ui(self):
         # Toolbar
@@ -262,16 +263,21 @@ class GraphBuilderApp:
                         messagebox.showerror("Connection Error", 
                                              f"Cannot connect {type_start} to {type_end}.\nConnections must alternate (Func <-> Res).")
                     else:
+                        # NEW: Dialog to distinguish Hard vs Soft dependencies
+                        is_hard = messagebox.askyesno(
+                            "Interdependency Type", 
+                            "Is this a HARD constraint?\n\nYes = Essential (Hard)\nNo = Supportive (Soft)"
+                        )
+                        
+                        # Set type based on user choice
+                        # Ensure these constants match what you put in config.py
+                        edge_type = config.EDGE_TYPE_HARD if is_hard else config.EDGE_TYPE_SOFT
+                        
                         self.save_state()
-                        self.G.add_edge(self.selected_node, node_id)
+                        # Add edge with the specific type attribute
+                        self.G.add_edge(self.selected_node, node_id, type=edge_type)
                 
                 self.selected_node = None
-                self.redraw()
-                
-        elif self.mode == "ASSIGN_AGENT":
-            if self.G.nodes[node_id]['agent'] != self.current_agent:
-                self.save_state()
-                self.assign_agent_logic(node_id, self.current_agent)
                 self.redraw()
 
     def redraw(self):
@@ -327,9 +333,29 @@ class GraphBuilderApp:
                 self.canvas.create_line(0, screen_y, 20000, screen_y, fill="#ddd", dash=(4, 4))
                 self.canvas.create_text(10, screen_y - 10, text=layer_name, anchor="w", fill="#888", font=("Arial", 8, "italic"))
 
-        # 2. Draw Edges
+        # 2. Draw Edges (Main Graph)
         r = config.NODE_RADIUS * self.zoom
-        for u, v in self.G.edges():
+        for u, v, d in self.G.edges(data=True):
+            
+            # --- A. View Filtering ---
+            # Skip edges if they don't match the current view mode (ALL, HARD, or SOFT)
+            e_type = d.get('type', config.EDGE_TYPE_HARD)
+            if self.edge_view_mode != "ALL" and e_type != self.edge_view_mode:
+                continue
+
+            # --- B. Style Selection ---
+            if e_type == config.EDGE_TYPE_SOFT:
+                # Soft Edge: Grey, Dashed, Thinner
+                color = config.SOFT_EDGE_COLOR
+                dash = config.SOFT_EDGE_DASH
+                width_mult = 1.5
+            else:
+                # Hard Edge: Black, Solid, Thicker
+                color = config.HARD_EDGE_COLOR
+                dash = None
+                width_mult = 2.0
+
+            # --- C. Position Calculation ---
             wx1, wy1 = self.get_draw_pos(u)
             wx2, wy2 = self.get_draw_pos(v)
             sx1, sy1 = self.to_screen(wx1, wy1)
@@ -339,11 +365,19 @@ class GraphBuilderApp:
             dist = math.hypot(dx, dy)
             if dist == 0: continue
             
+            # Gap calculation to stop line at node edge
             gap = r + 2
-            # Shorten line so arrow doesn't overlap node
             tx = sx2 - (dx/dist)*gap
             ty = sy2 - (dy/dist)*gap
-            self.canvas.create_line(sx1, sy1, tx, ty, arrow=tk.LAST, width=2*self.zoom)
+            
+            # --- D. Drawing ---
+            self.canvas.create_line(
+                sx1, sy1, tx, ty, 
+                arrow=tk.LAST, 
+                width=width_mult * self.zoom, 
+                fill=color, 
+                dash=dash  # <--- Applies the dash pattern for soft edges
+            )
             
         # 3. Draw Nodes
         for n, d in self.G.nodes(data=True):
@@ -471,9 +505,14 @@ class GraphBuilderApp:
         stats_frame.pack(fill=tk.X, padx=5)
         
         tk.Label(stats_frame, text=f"Density: {calculate_metric(self.G, 'Density')}", bg="white").pack(anchor="w", padx=5)
-        tk.Label(stats_frame, text=f"Avg Clustering: {calculate_metric(self.G, 'Avg Clustering')}", bg="white").pack(anchor="w", padx=5)
+        # tk.Label(stats_frame, text=f"Avg Clustering: {calculate_metric(self.G, 'Avg Clustering')}", bg="white").pack(anchor="w", padx=5)
         tk.Label(stats_frame, text=f"Cyclomatic No.: {calculate_metric(self.G, 'Cyclomatic Number')}", bg="white").pack(anchor="w", padx=5)
         
+        # Metrics for new edge types
+        tk.Label(stats_frame, text=f"Ratio of Soft to Hard edges: {calculate_metric(self.G, 'Brittleness Ratio')}", bg="white").pack(anchor="w", padx=5)
+        tk.Label(stats_frame, text=f"Supportive Gain (Global Eff): {calculate_metric(self.G, 'Supportive Gain')}", bg="white").pack(anchor="w", padx=5)
+        tk.Label(stats_frame, text=f"Critical Vuln.: {calculate_metric(self.G, 'Critical Vulnerability')}", bg="white").pack(anchor="w", padx=5)
+
         # --- Interdependence (Clickable) ---
         int_val = calculate_metric(self.G, 'Interdependence')
         lbl_int = tk.Label(stats_frame, text=f"Interdependence: {int_val}", bg="white", cursor="hand2", fg="blue")
@@ -674,7 +713,18 @@ class GraphBuilderApp:
         tk.Button(r1, text="↶", command=self.undo, width=2).pack(side=tk.LEFT, padx=1)
         tk.Button(r1, text="↷", command=self.redo, width=2).pack(side=tk.LEFT, padx=1)
         tk.Frame(r1, width=10).pack(side=tk.LEFT)
-        self.view_btn = tk.Button(r1, text="👁 View: Free", command=self.toggle_view, bg="#e1bee7", font=("Arial", 9, "bold"))
+
+        tk.Label(r1, text=" | Edges: ", fg="#555", font=("Arial", 15)).pack(side=tk.LEFT)
+    
+        def set_edge_view(mode):
+            self.edge_view_mode = mode
+            self.redraw()
+        tk.Button(r1, text="All", command=lambda: set_edge_view("ALL"), font=("Arial", 12)).pack(side=tk.LEFT, padx=1)
+        tk.Button(r1, text="Required Only", command=lambda: set_edge_view(config.EDGE_TYPE_HARD), font=("Arial", 12)).pack(side=tk.LEFT, padx=1)
+        tk.Button(r1, text="Assistive Only", command=lambda: set_edge_view(config.EDGE_TYPE_SOFT), font=("Arial", 12)).pack(side=tk.LEFT, padx=1)
+        tk.Frame(r1, width=10).pack(side=tk.LEFT)
+
+        self.view_btn = tk.Button(r1, text="👁 View: Free", command=self.toggle_view, bg="#e1bee7", font=("Arial", 12, "bold"))
         self.view_btn.pack(side=tk.LEFT, padx=10)
         
         # Mode Buttons
@@ -733,17 +783,35 @@ class GraphBuilderApp:
                 self.G.nodes[n]['agent'] = agent_name
 
     def on_double_click(self, event):
-        # Find clicked node
+        # 1. Check if a NODE was double-clicked (Existing Logic)
         r_screen = config.NODE_RADIUS * self.zoom
-        clicked = None
+        clicked_node = None
         for n in self.G.nodes:
             dwx, dwy = self.get_draw_pos(n)
             sx, sy = self.to_screen(dwx, dwy)
             if math.hypot(event.x - sx, event.y - sy) <= r_screen:
-                clicked = n
+                clicked_node = n
                 break
-        if clicked is not None:
-            self.open_node_editor(clicked)
+        
+        if clicked_node is not None:
+            self.open_node_editor(clicked_node)
+            return  # Stop here so we don't look for edges
+
+        # 2. Check if an EDGE was double-clicked (New Logic)
+        clicked_edge = self.find_edge_at(event.x, event.y)
+        if clicked_edge:
+            u, v = clicked_edge
+            
+            # Get current type (Default to HARD if missing)
+            current_type = self.G.edges[u, v].get('type', config.EDGE_TYPE_HARD)
+            
+            # Flip the type
+            new_type = config.EDGE_TYPE_SOFT if current_type == config.EDGE_TYPE_HARD else config.EDGE_TYPE_HARD
+            
+            # Save and Apply
+            self.save_state()
+            self.G.edges[u, v]['type'] = new_type
+            self.redraw()
             
     def open_node_editor(self, nid):
         win = Toplevel(self.root)
@@ -880,64 +948,48 @@ class GraphBuilderApp:
         self.finalize_json_save(self.G, "curr")
         
     def finalize_json_save(self, g, n):
-        # ask for file location
         fp = filedialog.asksaveasfilename(initialfile=n, defaultextension=".json")
         if not fp: return
 
-        # build nodes dictionary
         nodes_dict = {}
-        
-        # Pre-calculate Agent Authorities (Which agent owns which node label?)
         agent_authorities = {name: [] for name in self.agents.keys()}
 
         for nid, d in g.nodes(data=True):
             label = d.get('label', f"Node_{nid}")
             layer = d.get('layer', "Base Environment")
             n_type = d.get('type', "Function")
-            
-            # Format Type string: e.g. "Distributed Work" -> "DistributedWork"
             formatted_layer = layer.replace(" ", "")
-            combined_type = f"{formatted_layer}{n_type}" # e.g., "DistributedWorkFunction"
+            combined_type = f"{formatted_layer}{n_type}"
             
-            nodes_dict[label] = {
-                "Type": combined_type,
-                "UserData": label
-            }
-
-            # Add to agent authority list
+            nodes_dict[label] = {"Type": combined_type, "UserData": label}
+            
             agent_name = d.get('agent', 'Unassigned')
             if agent_name in agent_authorities:
                 agent_authorities[agent_name].append(label)
 
-        # Build the edge list
         edges_list = []
-        for u, v in g.edges():
+        for u, v, d in g.edges(data=True): # Note: data=True
             u_lbl = g.nodes[u].get('label', f"Node_{u}")
             v_lbl = g.nodes[v].get('label', f"Node_{v}")
+            
+            # SAVE THE EDGE TYPE
+            e_type = d.get('type', config.EDGE_TYPE_HARD)
             
             edges_list.append({
                 "Source": u_lbl,
                 "Target": v_lbl,
-                "UserData": {"QOS": ""}
+                "UserData": {
+                    "QOS": "",
+                    "type": e_type # <--- Saved here
+                }
             })
 
-        # Build the agents dictionary
         agents_dict = {}
         for name, _ in self.agents.items():
-            agents_dict[name] = {
-                "Authority": agent_authorities.get(name, [])
-            }
+            agents_dict[name] = {"Authority": agent_authorities.get(name, [])}
 
-        # Construct Final JSON Structure
-        final_data = {
-            "GraphData": {
-                "Nodes": nodes_dict,
-                "Edges": edges_list,
-                "Agents": agents_dict
-            }
-        }
+        final_data = {"GraphData": {"Nodes": nodes_dict, "Edges": edges_list, "Agents": agents_dict}}
 
-        # Save to Disk
         with open(fp, 'w') as f:
             json.dump(final_data, f, indent=4)
                 
@@ -1038,10 +1090,15 @@ class GraphBuilderApp:
                 src_lbl = edge.get("Source")
                 tgt_lbl = edge.get("Target")
                 
+                # LOAD THE EDGE TYPE
+                user_data = edge.get("UserData", {})
+                # Check for "type" key, default to HARD if missing
+                loaded_type = user_data.get("type", config.EDGE_TYPE_HARD)
+                
                 if src_lbl in label_to_id and tgt_lbl in label_to_id:
                     u = label_to_id[src_lbl]
                     v = label_to_id[tgt_lbl]
-                    self.G.add_edge(u, v)
+                    self.G.add_edge(u, v, type=loaded_type) # <--- Applied here
                     
             self.redraw()
             

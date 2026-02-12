@@ -1,0 +1,56 @@
+{
+    "GraphData": {
+        "Nodes": {
+            "ImageryCapture": { "Type": "DistributedWorkFunction", "UserData": "ImageryCapture" },
+            "SensorFusion": { "Type": "DistributedWorkFunction", "UserData": "SensorFusion" },
+            "ObstacleLocalization": { "Type": "DistributedWorkFunction", "UserData": "ObstacleLocalization" },
+            "LocationAttAssessment": { "Type": "DistributedWorkFunction", "UserData": "LocationAttAssessment" },
+            "RobotPathPlanning": { "Type": "DistributedWorkFunction", "UserData": "RobotPathPlanning" },
+            "EvaluatePlannedPath": { "Type": "SynchronyFunction", "UserData": "EvaluatePlannedPath" },
+            "ConflictDetection": { "Type": "SynchronyFunction", "UserData": "ConflictDetection" },
+            "PathNegotiation": { "Type": "SynchronyFunction", "UserData": "PathNegotiation" },
+            "UpdateConstraints": { "Type": "DistributedWorkFunction", "UserData": "UpdateConstraints" },
+            "MaintainCommonGround": { "Type": "SynchronyFunction", "UserData": "MaintainCommonGround" },
+            "Raw Video": { "Type": "BaseEnvironmentResource", "UserData": "Raw Video" },
+            "Robot Location": { "Type": "BaseEnvironmentResource", "UserData": "Robot Location" },
+            "Shared Hazard Map": { "Type": "CoordinationGroundingResource", "UserData": "Shared Hazard Map" },
+            "Obstacle Data": { "Type": "BaseEnvironmentResource", "UserData": "Obstacle Data" },
+            "Proposed Path": { "Type": "BaseEnvironmentResource", "UserData": "Proposed Path" },
+            "Mission Constraints": { "Type": "CoordinationGroundingResource", "UserData": "Mission Constraints" },
+            "Verified Path": { "Type": "CoordinationGroundingResource", "UserData": "Verified Path" }
+        },
+        "Edges": [
+            { "Source": "ImageryCapture", "Target": "Raw Video", "UserData": { "type": "hard" } },
+            { "Source": "SensorFusion", "Target": "Shared Hazard Map", "UserData": { "type": "hard" } },
+            { "Source": "ObstacleLocalization", "Target": "Obstacle Data", "UserData": { "type": "hard" } },
+            { "Source": "LocationAttAssessment", "Target": "Robot Location", "UserData": { "type": "hard" } },
+            { "Source": "RobotPathPlanning", "Target": "Proposed Path", "UserData": { "type": "hard" } },
+            { "Source": "EvaluatePlannedPath", "Target": "Verified Path", "UserData": { "type": "hard" } },
+            { "Source": "Raw Video", "Target": "SensorFusion", "UserData": { "type": "hard" } },
+            { "Source": "Robot Location", "Target": "RobotPathPlanning", "UserData": { "type": "hard" } },
+            { "Source": "Obstacle Data", "Target": "SensorFusion", "UserData": { "type": "hard" } },
+            { "Source": "Proposed Path", "Target": "EvaluatePlannedPath", "UserData": { "type": "hard" } },
+            { "Source": "Shared Hazard Map", "Target": "ObstacleLocalization", "UserData": { "type": "hard" } },
+            
+            { "Source": "ConflictDetection", "Target": "Mission Constraints", "UserData": { "type": "soft" } },
+            { "Source": "PathNegotiation", "Target": "Verified Path", "UserData": { "type": "soft" } },
+            { "Source": "UpdateConstraints", "Target": "Mission Constraints", "UserData": { "type": "soft" } },
+            { "Source": "MaintainCommonGround", "Target": "Mission Constraints", "UserData": { "type": "soft" } },
+            { "Source": "Shared Hazard Map", "Target": "MaintainCommonGround", "UserData": { "type": "soft" } },
+            { "Source": "Proposed Path", "Target": "ConflictDetection", "UserData": { "type": "soft" } },
+            { "Source": "Mission Constraints", "Target": "RobotPathPlanning", "UserData": { "type": "soft" } },
+            { "Source": "Mission Constraints", "Target": "PathNegotiation", "UserData": { "type": "soft" } },
+            { "Source": "Verified Path", "Target": "UpdateConstraints", "UserData": { "type": "soft" } },
+            { "Source": "Verified Path", "Target": "RobotPathPlanning", "UserData": { "type": "soft" } }
+        ],
+        "Agents": {
+            "Unassigned": { "Authority": [] },
+            "Autonomous Robot": {
+                "Authority": [ "ImageryCapture", "SensorFusion", "ObstacleLocalization", "LocationAttAssessment", "RobotPathPlanning", "Raw Video", "Robot Location", "Shared Hazard Map", "Obstacle Data", "Proposed Path" ]
+            },
+            "Human Team": {
+                "Authority": [ "EvaluatePlannedPath", "ConflictDetection", "PathNegotiation", "UpdateConstraints", "MaintainCommonGround", "Mission Constraints", "Verified Path" ]
+            }
+        }
+    }
+}
