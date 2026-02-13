@@ -10,6 +10,23 @@ from components import InteractiveComparisonPanel, CreateToolTip
 import metric_visualizations
 from PIL import ImageGrab
 
+# Descriptions of each metric/measure (hover-over-able in GUI)
+METRIC_DESCRIPTIONS = {
+    "Density": "The ratio of actual connections to potential connections.\nHigh density = highly connected.",
+    "Cyclomatic Number": "The number of fundamental independent loops.\nMeasures the structural complexity of feedback.",
+    "Global Efficiency": "A measure (0.0 - 1.0) of how easily information flows across the network.\nHigher is better for connectivity.",
+    "Supportive Gain": "The amount of efficiency provided specifically by 'Soft' edges.\nHigh gain = Critical reliance on soft interdependencies (coordination?).",
+    "Brittleness Ratio": "The balance of Supportive (Soft) vs. Essential (Hard) edges.\nLow soft count may indicate a brittle, rigid system.",
+    "Critical Vulnerability": "Checks if the 'Hard' skeleton of the graph is connected.\n'Fractured' means the system breaks if soft links fail.",
+    "Interdependence": "The percentage of edges that cross between different agents.\nHigh interdependence = High requirement for collaboration.",
+    "Total Cycles": "The total count of all feedback loops in the system.\nIndicates potential for recirculation or resonance.",
+    "Avg Cycle Length": "The average number of steps in a feedback loop.\nLong loops = delayed feedback.",
+    "Modularity": "How well the system divides into distinct, isolated groups (modules).\nHigh modularity = Low coupling between groups.",
+    "Functional Redundancy": "The average number of agents assigned to each function.\n>1.0 implies backup capacity exists.",
+    "Agent Criticality": "The agent with the most sole-authority tasks.\nLoss of this agent may cause most disruption.",
+    "Collaboration Ratio": "The percentage of functions that have shared authority.\Could be a measure of system flexibility."
+    }
+
 class GraphBuilderApp:
     def __init__(self, root):
         self.root = root
@@ -60,6 +77,12 @@ class GraphBuilderApp:
         main_container = tk.Frame(self.root)
         main_container.pack(fill=tk.BOTH, expand=True)
 
+        # 1. PACK DASHBOARD FIRST (Right Side)
+        self.dashboard_frame = tk.Frame(main_container, width=350, bg="#f0f0f0", bd=1, relief=tk.SUNKEN)
+        self.dashboard_frame.pack(side=tk.RIGHT, fill=tk.Y)
+        self.dashboard_frame.pack_propagate(False)
+
+        # 2. PACK CANVAS SECOND (Fills Remaining Space)
         self.canvas = tk.Canvas(main_container, bg="white")
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
@@ -74,17 +97,13 @@ class GraphBuilderApp:
         self.canvas.bind("<Button-4>", lambda e: self.on_zoom(e, 1))  
         self.canvas.bind("<Button-5>", lambda e: self.on_zoom(e, -1)) 
 
-        # Dashboard Sidebar
-        self.dashboard_frame = tk.Frame(main_container, width=350, bg="#f0f0f0", bd=1, relief=tk.SUNKEN)
-        self.dashboard_frame.pack(side=tk.RIGHT, fill=tk.Y)
-        self.dashboard_frame.pack_propagate(False) 
-        
+        # 3. FILL DASHBOARD CONTENT (Do not re-create the frame!)
         tk.Label(self.dashboard_frame, text="Network Dashboard", font=("Arial", 14, "bold"), bg="#4a4a4a", fg="white", pady=8).pack(fill=tk.X)
         
         self.inspector_frame = tk.Frame(self.dashboard_frame, bg="#fff8e1", bd=2, relief=tk.GROOVE)
         self.inspector_frame.pack(fill=tk.X, padx=5, pady=5)
         
-        # Scrollable Area for Stats/Agents
+        # Scrollable Area
         self.scroll_canvas = tk.Canvas(self.dashboard_frame, bg="#f0f0f0")
         self.scrollbar = tk.Scrollbar(self.dashboard_frame, orient="vertical", command=self.scroll_canvas.yview)
         self.scrollable_content = tk.Frame(self.scroll_canvas, bg="#f0f0f0")
@@ -379,14 +398,16 @@ class GraphBuilderApp:
                 dash=dash  # <--- Applies the dash pattern for soft edges
             )
             
-        # 3. Draw Nodes
+        # 3. Draw Nodes (Updated for Shared Authority)
         for n, d in self.G.nodes(data=True):
             wx, wy = self.get_draw_pos(n)
             sx, sy = self.to_screen(wx, wy)
             
-            fill = self.agents.get(d.get('agent'), "white")
+            # Ensure proper list format
+            ag_list = d.get('agent', ["Unassigned"])
+            if not isinstance(ag_list, list): ag_list = [ag_list]
             
-            # Outline logic
+            # Selection Highlight
             outline = "black"
             width = 1
             if n == self.selected_node:
@@ -394,18 +415,51 @@ class GraphBuilderApp:
             elif n == self.inspected_node:
                 outline, width = "orange", 3
             
-            # Shape logic
-            if d.get('type') == "Function":
-                self.canvas.create_rectangle(sx-r, sy-r, sx+r, sy+r, fill=fill, outline=outline, width=width)
-            else:
-                self.canvas.create_oval(sx-r, sy-r, sx+r, sy+r, fill=fill, outline=outline, width=width)
+            node_type = d.get('type')
+            r = config.NODE_RADIUS * self.zoom
             
+            if node_type == "Function":
+                # --- N-WAY VERTICAL STRIPS ---
+                total_w = (r * 2)
+                strip_w = total_w / len(ag_list)
+                start_x = sx - r
+                
+                # Loop through ALL agents in the list
+                for i, ag in enumerate(ag_list):
+                    fill = self.agents.get(ag, "white")
+                    
+                    # Calculate strict boundaries for this agent's strip
+                    x1 = start_x + (i * strip_w)
+                    x2 = start_x + ((i + 1) * strip_w)
+                    
+                    self.canvas.create_rectangle(x1, sy-r, x2, sy+r, fill=fill, outline="")
+                
+                # Draw the border on top
+                self.canvas.create_rectangle(sx-r, sy-r, sx+r, sy+r, fill="", outline=outline, width=width)
+                
+            else:
+                # --- N-WAY PIE CHART ---
+                if len(ag_list) == 1:
+                    fill = self.agents.get(ag_list[0], "white")
+                    self.canvas.create_oval(sx-r, sy-r, sx+r, sy+r, fill=fill, outline=outline, width=width)
+                else:
+                    # Divide 360 degrees by number of agents
+                    extent = 360 / len(ag_list)
+                    start_angle = 90
+                    
+                    for ag in ag_list:
+                        fill = self.agents.get(ag, "white")
+                        self.canvas.create_arc(sx-r, sy-r, sx+r, sy+r, start=start_angle, extent=extent, fill=fill, outline="")
+                        start_angle += extent
+                    
+                    self.canvas.create_oval(sx-r, sy-r, sx+r, sy+r, fill="", outline=outline, width=width)
+            
+            # Label
             font_size = max(15, int(10 * self.zoom))
             label_offset = r + (5 * self.zoom)
-            self.canvas.create_text(sx, sy-label_offset, text=d.get('label',''), font=("Arial", font_size, "bold"), anchor = "s")
-            
+            self.canvas.create_text(sx, sy-label_offset, text=d.get('label',''), font=("Arial", font_size, "bold"), anchor="s")
         self.rebuild_dashboard()
-
+        
     def trigger_visual_analytics(self, mode):
         # Toggle: If clicking same mode, turn off.
         if self.active_vis_mode == mode:
@@ -490,209 +544,189 @@ class GraphBuilderApp:
         
         return container
     
-    def rebuild_dashboard(self):
-        """Refreshes the sidebar. Careful not to duplicate widgets."""
-        
-        # 1. Clear Inspector (we will rebuild it at the end)
-        for w in self.inspector_frame.winfo_children(): w.destroy()
+    def _build_inspector_ui(self):
+        """Helper to rebuild just the inspector panel."""
+        if self.inspected_node is None or not self.G.has_node(self.inspected_node):
+            tk.Label(self.inspector_frame, text="(Select a node to inspect)", bg="#fff8e1", fg="#888").pack(pady=5)
+            return
 
-        # 2. Clear Scrollable Content (Stats & Agent List)
-        for w in self.scrollable_content.winfo_children(): w.destroy()
+        d = self.G.nodes[self.inspected_node]
+        tk.Label(self.inspector_frame, text="SELECTED NODE INSPECTOR", bg="#fff8e1", font=("Arial", 10, "bold")).pack(pady=2)
+
+        # Row 1: ID & Label
+        r1 = tk.Frame(self.inspector_frame, bg="#fff8e1"); r1.pack(fill=tk.X, padx=5)
+        tk.Label(r1, text=f"ID: {self.inspected_node} | Lbl: {d.get('label')}", bg="#fff8e1", font=("Arial", 9, "bold")).pack(anchor="w")
+
+        # Row 2: Layer Selector
+        r2 = tk.Frame(self.inspector_frame, bg="#fff8e1"); r2.pack(fill=tk.X, padx=5, pady=2)
+        tk.Label(r2, text="Layer:", bg="#fff8e1").pack(side=tk.LEFT)
         
-        # --- Stats Section ---
+        current_layer = self.get_node_layer(d)
+        layer_var = tk.StringVar(value=current_layer)
+        layer_box = ttk.Combobox(r2, textvariable=layer_var, values=config.LAYER_ORDER, state="readonly", width=18)
+        layer_box.pack(side=tk.LEFT, padx=5)
+        
+        def on_layer_change(event):
+            self.save_state()
+            self.G.nodes[self.inspected_node]['layer'] = layer_var.get()
+            self.redraw()
+        layer_box.bind("<<ComboboxSelected>>", on_layer_change)
+
+        # Row 3: Metrics
+        r3 = tk.Frame(self.inspector_frame, bg="#fff8e1"); r3.pack(fill=tk.X, padx=5, pady=5)
+        
+        # Safe metric calculation
+        def get_metric(func, *args, **kwargs):
+            try: return f"{func(self.G, *args, **kwargs)[self.inspected_node]:.3f}"
+            except: return "0.000"
+
+        stat_txt = (f"In-Degree:     {self.G.in_degree(self.inspected_node)}\n"
+                    f"Out-Degree:    {self.G.out_degree(self.inspected_node)}\n"
+                    f"Degree Cent.:  {get_metric(nx.degree_centrality)}\n"
+                    f"Eigenvector:   {get_metric(nx.eigenvector_centrality, max_iter=100, tol=1e-04)}\n"
+                    f"Betweenness:   {get_metric(nx.betweenness_centrality)}\n")
+        
+        tk.Label(r3, text=stat_txt, bg="#fff8e1", justify=tk.LEFT, font=("Consolas", 13)).pack(anchor="w")
+
+    def rebuild_dashboard(self):
+        # 1. Save Scroll Position
+        try: scroll_pos = self.scroll_canvas.yview()[0]
+        except: scroll_pos = 0.0
+
+        # 2. Clear UI
+        for w in self.inspector_frame.winfo_children(): w.destroy()
+        for w in self.scrollable_content.winfo_children(): w.destroy()
+
+        # --- SECTION A: STATISTICS ---
         tk.Label(self.scrollable_content, text="Network Statistics", font=("Arial", 14, "bold"), bg="#f0f0f0").pack(fill=tk.X, pady=(10, 5))
         stats_frame = tk.Frame(self.scrollable_content, bg="white", bd=1, relief=tk.SOLID)
         stats_frame.pack(fill=tk.X, padx=5)
-        
-        tk.Label(stats_frame, text=f"Density: {calculate_metric(self.G, 'Density')}", bg="white").pack(anchor="w", padx=5)
-        # tk.Label(stats_frame, text=f"Avg Clustering: {calculate_metric(self.G, 'Avg Clustering')}", bg="white").pack(anchor="w", padx=5)
-        tk.Label(stats_frame, text=f"Cyclomatic No.: {calculate_metric(self.G, 'Cyclomatic Number')}", bg="white").pack(anchor="w", padx=5)
-        
-        # Metrics for new edge types
-        tk.Label(stats_frame, text=f"Ratio of Soft to Hard edges: {calculate_metric(self.G, 'Brittleness Ratio')}", bg="white").pack(anchor="w", padx=5)
-        tk.Label(stats_frame, text=f"Supportive Gain (Global Eff): {calculate_metric(self.G, 'Supportive Gain')}", bg="white").pack(anchor="w", padx=5)
-        tk.Label(stats_frame, text=f"Critical Vuln.: {calculate_metric(self.G, 'Critical Vulnerability')}", bg="white").pack(anchor="w", padx=5)
 
-        # --- Interdependence (Clickable) ---
-        int_val = calculate_metric(self.G, 'Interdependence')
-        lbl_int = tk.Label(stats_frame, text=f"Interdependence: {int_val}", bg="white", cursor="hand2", fg="blue")
-        lbl_int.pack(anchor="w", padx=5)
-        lbl_int.bind("<Button-1>", lambda e: self.trigger_visual_analytics("interdependence"))
-
-        # --- Total Cycles (Clickable) ---
-        cyc_val = calculate_metric(self.G, 'Total Cycles')
-        lbl_cyc = tk.Label(stats_frame, text=f"Total Cycles: {cyc_val}", bg="white", cursor="hand2", fg="blue")
-        lbl_cyc.pack(anchor="w", padx=5)
-        lbl_cyc.bind("<Button-1>", lambda e: self.trigger_visual_analytics("cycles"))
-
-        # --- Avg Cycle Length (Using Helper) ---
-        cycles = list(nx.simple_cycles(self.G))
-        cycle_items = []
-        if cycles:
-            lengths = [len(c) for c in cycles]
-            avg = sum(lengths) / len(lengths)
-            lbl_text = f"Avg Cycle Length: {avg:.2f}"
-            for i, c in enumerate(cycles):
-                # Tooltip: "NodeA -> NodeB -> NodeC"
-                path_str = " -> ".join([str(self.G.nodes[n].get('label', n)) for n in c])
-                cycle_items.append({'label': len(c), 'tooltip': f"Cycle {i+1}:\n{path_str}"})
-        else:
-            lbl_text = "Avg Cycle Length: 0.0"
-
-        cycle_colors = ["blue"]
-        
-        def on_main_cycle_click(idx): 
-            self.trigger_single_cycle_vis(idx)
+        # 1. Update Helper to accept a 'key' for looking up the tooltip
+        def add_stat(text, color="black", callback=None, metric_key=None):
+            lbl = tk.Label(stats_frame, text=text, bg="white", fg=color)
+            if callback:
+                lbl.config(cursor="hand2")
+                lbl.bind("<Button-1>", lambda e: callback())
             
-        c_ui = self._create_scrollable_list_ui(stats_frame, lbl_text, cycle_items, cycle_colors, on_main_cycle_click)
-        c_ui.pack(fill=tk.X, padx=5, pady=2)
+            lbl.pack(anchor="w", padx=5)
+            
+            # --- ATTACH TOOLTIP HERE ---
+            if metric_key and metric_key in METRIC_DESCRIPTIONS:
+                # We assume CreateToolTip is imported from components
+                CreateToolTip(lbl, METRIC_DESCRIPTIONS[metric_key])
 
-        # --- Global Efficiency ---
-        tk.Label(stats_frame, text=f"Global Efficiency: {calculate_metric(self.G, 'Global Efficiency')}", bg="white").pack(anchor="w", padx=5)
+        # 2. Update the Metrics Loop to pass the key
+        # Format: (Display Label, Calculation Key, Tooltip Key)
+        metrics = [
+            ("Density", "Density", "Density"), 
+            ("Cyclomatic Number", "Cyclomatic Number", "Cyclomatic Number"),
+            ("Global Efficiency", "Global Efficiency", "Global Efficiency"), 
+            ("Supportive Gain", "Supportive Gain", "Supportive Gain"),
+            ("Soft/Hard Interdependency Ratio", "Brittleness Ratio", "Brittleness Ratio"), 
+            ("Critical Vulnerability", "Critical Vulnerability", "Critical Vulnerability"),
+            ("Functional Redundancy", "Functional Redundancy", "Functional Redundancy"),
+            ("Agent Criticality", "Agent Criticality", "Agent Criticality"),
+            ("Collaborative Ratio", "Collaboration Ratio", "Collaboration Ratio")
+        ]
+        
+        for label, calc_key, tip_key in metrics:
+            val = calculate_metric(self.G, calc_key)
+            add_stat(f"{label}: {val}", metric_key=tip_key)
 
-        # --- Modularity (Using Helper) ---
-        # --- Modularity (Using Helper) ---
+        # 3. Update the Manual/Clickable Metrics to pass keys
+        add_stat(f"Interdependence: {calculate_metric(self.G, 'Interdependence')}", 
+                 "blue", 
+                 lambda: self.trigger_visual_analytics("interdependence"),
+                 metric_key="Interdependence")
+
+        add_stat(f"Total Cycles: {calculate_metric(self.G, 'Total Cycles')}", 
+                 "blue", 
+                 lambda: self.trigger_visual_analytics("cycles"),
+                 metric_key="Total Cycles")
+
+        # 4. Complex UI (Cycles) - Add tooltip to the header
+        cycles = list(nx.simple_cycles(self.G))
+        if cycles:
+            avg_len = sum(len(c) for c in cycles) / len(cycles)
+            # Create header manually to attach tooltip
+            h_lbl = tk.Label(stats_frame, text=f"Avg Cycle Length: {avg_len:.2f}", bg="white")
+            h_lbl.pack(anchor="w", padx=5)
+            CreateToolTip(h_lbl, METRIC_DESCRIPTIONS["Avg Cycle Length"])
+
+            items = [{'label': len(c), 'tooltip': f"Cycle {i+1}:\n" + " -> ".join([str(self.G.nodes[n].get('label', n)) for n in c])} for i, c in enumerate(cycles)]
+            self._create_scrollable_list_ui(stats_frame, "", items, ["blue"], lambda idx: self.trigger_single_cycle_vis(idx)).pack(fill=tk.X, padx=5, pady=2)
+        else:
+            add_stat("Avg Cycle Length: 0.0", metric_key="Avg Cycle Length")
+
+        # 5. Complex UI (Modularity)
         try:
             mod_val = calculate_metric(self.G, 'Modularity')
-            comms = list(nx.community.greedy_modularity_communities(self.G.to_undirected()))
-            comms.sort(key=len, reverse=True)
             
-            mod_items = []
-            for i, c in enumerate(comms):
-                node_names = [str(self.G.nodes[n].get('label', n)) for n in c]
-                tt_text = f"Group {i+1} ({len(c)} nodes):\n" + ", ".join(node_names)
-                mod_items.append({'label': len(c), 'tooltip': tt_text})
+            # Create header manually
+            m_lbl = tk.Label(stats_frame, text=f"Modularity: {mod_val}", bg="white", fg="blue", cursor="hand2")
+            m_lbl.bind("<Button-1>", lambda e: self.trigger_visual_analytics("modularity"))
+            m_lbl.pack(anchor="w", padx=5)
+            CreateToolTip(m_lbl, METRIC_DESCRIPTIONS.get("Modularity", ""))
 
-            mod_colors = ["blue"] # <--- Fixed Variable Name
+            comms = sorted(nx.community.greedy_modularity_communities(self.G.to_undirected()), key=len, reverse=True)
+            mod_items = [{'label': len(c), 'tooltip': f"Group {i+1}:\n" + ", ".join([str(self.G.nodes[n].get('label', n)) for n in c])} for i, c in enumerate(comms)]
             
-            # Click Handler 1: Individual Group
-            def on_main_mod_click(idx): 
-                self.trigger_single_modularity_vis(idx)
+            # FIX: Only create the scrollable list if there are actual items
+            if mod_items:
+                self._create_scrollable_list_ui(stats_frame, "", mod_items, ["blue"], 
+                                              lambda idx: self.trigger_single_modularity_vis(idx)).pack(fill=tk.X, padx=5, pady=2)
+            # Else: Do nothing (The header "Modularity: 0" is enough)
 
-            # Click Handler 2: All Modules (NEW)
-            def on_mod_label_click():
-                self.trigger_visual_analytics("modularity")
+        except: 
+            add_stat("Modularity: Err", metric_key="Modularity")
 
-            # Pass both callbacks
-            m_ui = self._create_scrollable_list_ui(
-                stats_frame, 
-                f"Modularity: {mod_val}", 
-                mod_items, 
-                mod_colors, 
-                on_main_mod_click,
-                label_click_callback=on_mod_label_click # <--- NEW Argument
-            )
-            m_ui.pack(fill=tk.X, padx=5, pady=2)
-            
-        except Exception as e:
-            print(f"Mod UI Error: {e}")
-            tk.Label(stats_frame, text="Modularity: Err", bg="white").pack(anchor="w", padx=5)
-
-        # --- Agent Overview Section ---
+        # --- SECTION B: AGENT OVERVIEW ---
         tk.Label(self.scrollable_content, text="Agent Overview", font=("Arial", 14, "bold"), bg="#f0f0f0").pack(fill=tk.X, pady=(15, 2))
-        
-        # Controls
-        ctrl_frame = tk.Frame(self.scrollable_content, bg="#e0e0e0", bd=1, relief=tk.RAISED)
-        ctrl_frame.pack(fill=tk.X, padx=5, pady=5)
-        tk.Button(ctrl_frame, text="New Agent", command=self.create_agent, bg="white").pack(pady=5)
+        ctrl = tk.Frame(self.scrollable_content, bg="#e0e0e0", bd=1, relief=tk.RAISED)
+        ctrl.pack(fill=tk.X, padx=5, pady=5)
+        tk.Button(ctrl, text="New Agent", command=self.create_agent, bg="white").pack(pady=5)
 
-        # Group Nodes by Agent
-        agent_map = {name: [] for name in self.agents.keys()}
-        for node, data in self.G.nodes(data=True):
-            ag = data.get('agent', 'Unassigned')
-            agent_map.setdefault(ag, []).append(node)
+        # Efficient Agent Grouping
+        agent_map = {name: [] for name in self.agents}
+        for n, d in self.G.nodes(data=True):
+            ag_list = d.get('agent', ["Unassigned"])
+            if not isinstance(ag_list, list): ag_list = [ag_list]
+            for ag in ag_list:
+                target = ag if ag in agent_map else "Unassigned"
+                if target not in agent_map: agent_map[target] = []
+                agent_map[target].append(n)
 
-        # Render Agent List
-        for agent_name, color in self.agents.items():
+        # Render Agents
+        for name, color in self.agents.items():
             af = tk.Frame(self.scrollable_content, bg="#e0e0e0", bd=1, relief=tk.RAISED)
             af.pack(fill=tk.X, pady=2, padx=5)
-            # Store name on widget for drag-and-drop detection
-            af.agent_name = agent_name 
+            af.agent_name = name # For drag-n-drop logic
             
-            # Header (Color + Name)
-            hf = tk.Frame(af, bg="#e0e0e0")
-            hf.pack(fill=tk.X)
-            hf.agent_name = agent_name
-            
-            # Color Box
-            cb = tk.Label(hf, bg=color, width=3)
-            cb.pack(side=tk.LEFT, padx=5)
-            cb.bind("<Button-1>", lambda e, a=agent_name: self.edit_agent(a))
-            
-            # Name Label
-            lbl = tk.Label(hf, text=agent_name, bg="#e0e0e0", font=("Arial", 10, "bold"))
-            lbl.pack(side=tk.LEFT, fill=tk.X)
-            lbl.bind("<Button-1>", lambda e, a=agent_name: self.edit_agent(a))
+            # Header
+            hf = tk.Frame(af, bg="#e0e0e0"); hf.pack(fill=tk.X); hf.agent_name = name
+            for w in [tk.Label(hf, bg=color, width=3), tk.Label(hf, text=name, bg="#e0e0e0", font=("Arial", 10, "bold"))]:
+                w.pack(side=tk.LEFT, padx=5 if w['width']==3 else 0, fill=tk.X)
+                w.bind("<Button-1>", lambda e, a=name: self.edit_agent(a))
 
-            # Nodes List
-            nodes_list = agent_map.get(agent_name, [])
-            if nodes_list:
-                for nid in nodes_list:
-                    nlbl = self.G.nodes[nid].get('label', str(nid))
-                    btn = tk.Button(af, text=f"• {nlbl}", anchor="w", bg="white", relief=tk.FLAT, font=("Arial", 9),
-                                    command=lambda n=nid: self.handle_click(n))
-                    btn.pack(fill=tk.X, padx=10, pady=1)
-                    
-                    # Sidebar Drag Events
-                    btn.bind("<Button-1>", lambda e, n=nid: self.on_sidebar_node_press(e, n))
-                    btn.bind("<B1-Motion>", lambda e: None) 
-                    btn.bind("<ButtonRelease-1>", self.on_sidebar_node_release)
+            # Node List
+            nodes = agent_map.get(name, [])
+            if nodes:
+                for nid in nodes:
+                    lbl = self.G.nodes[nid].get('label', str(nid))
+                    b = tk.Button(af, text=f"• {lbl}", anchor="w", bg="white", relief=tk.FLAT, font=("Arial", 9), command=lambda n=nid: self.handle_click(n))
+                    b.pack(fill=tk.X, padx=10, pady=1)
+                    b.bind("<Button-1>", lambda e, n=nid: self.on_sidebar_node_press(e, n))
+                    b.bind("<ButtonRelease-1>", self.on_sidebar_node_release)
             else:
                 tk.Label(af, text="(Empty)", bg="#e0e0e0", fg="#666", font=("Arial", 8, "italic")).pack(anchor="w", padx=10)
 
-        # --- Inspector Section (Built only once!) ---
-        if self.inspected_node is not None and self.G.has_node(self.inspected_node):
-            d = self.G.nodes[self.inspected_node]
-            
-            tk.Label(self.inspector_frame, text="SELECTED NODE INSPECTOR", bg="#fff8e1", font=("Arial", 10, "bold")).pack(pady=2)
-            
-            # ID & Label
-            r1 = tk.Frame(self.inspector_frame, bg="#fff8e1"); r1.pack(fill=tk.X, padx=5)
-            tk.Label(r1, text=f"ID: {self.inspected_node} | Lbl: {d.get('label')}", bg="#fff8e1", font=("Arial", 9, "bold")).pack(anchor="w")
-            
-            # Layer Selector
-            r2 = tk.Frame(self.inspector_frame, bg="#fff8e1"); r2.pack(fill=tk.X, padx=5, pady=2)
-            tk.Label(r2, text="Layer:", bg="#fff8e1").pack(side=tk.LEFT)
-            
-            current_layer = self.get_node_layer(d)
-            layer_var = tk.StringVar(value=current_layer)
-            layer_box = ttk.Combobox(r2, textvariable=layer_var, values=config.LAYER_ORDER, state="readonly", width=18)
-            layer_box.pack(side=tk.LEFT, padx=5)
-            
-            def on_layer_change(event):
-                self.save_state()
-                self.G.nodes[self.inspected_node]['layer'] = layer_var.get()
-                self.redraw()
-            layer_box.bind("<<ComboboxSelected>>", on_layer_change)
-
-            # Node Metrics
-            r3 = tk.Frame(self.inspector_frame, bg="#fff8e1"); r3.pack(fill=tk.X, padx=5, pady=5)
-            
-            in_d = self.G.in_degree(self.inspected_node)
-            out_d = self.G.out_degree(self.inspected_node)
-            
-            try: deg_c = nx.degree_centrality(self.G)[self.inspected_node]
-            except: deg_c = 0.0
-            
-            try: eig_c = nx.eigenvector_centrality(self.G, max_iter=100, tol=1e-04).get(self.inspected_node, 0)
-            except: eig_c = 0.0
-
-            try: 
-                # Betweenness finds "Bottlenecks"
-                bet_c = nx.betweenness_centrality(self.G)[self.inspected_node]
-            except: bet_c = 0.0
-            
-            stat_txt = (f"In-Degree:     {in_d}\n"
-                        f"Out-Degree:    {out_d}\n"
-                        f"Degree Cent.:  {deg_c:.3f}\n"
-                        f"Eigenvector:   {eig_c:.3f}\n"
-                        f"Betweenness:   {bet_c:.3f}\n"
-                        )
-            
-            tk.Label(r3, text=stat_txt, bg="#fff8e1", justify=tk.LEFT, font=("Consolas", 13)).pack(anchor="w")
-
-        else:
-            tk.Label(self.inspector_frame, text="(Select a node to inspect)", bg="#fff8e1", fg="#888").pack(pady=5)
+        # --- SECTION C: INSPECTOR & RESTORE ---
+        self._build_inspector_ui()
+        
+        self.scrollable_content.update_idletasks()
+        self.scroll_canvas.configure(scrollregion=self.scroll_canvas.bbox("all"))
+        self.scroll_canvas.yview_moveto(scroll_pos)
 
     def toggle_view(self):
         if self.view_mode == config.VIEW_MODE_FREE:
@@ -776,11 +810,26 @@ class GraphBuilderApp:
     # --- Node/Agent Logic ---
 
     def assign_agent_logic(self, node_id, agent_name):
-        self.G.nodes[node_id]['agent'] = agent_name
-        # Propagate agent to connected nodes if they are functions
-        if self.G.nodes[node_id]['type'] == "Function":
-            for n in self.G.successors(node_id): 
-                self.G.nodes[n]['agent'] = agent_name
+        # 1. Get current agents (ensure it is a list)
+        current_data = self.G.nodes[node_id].get('agent', ["Unassigned"])
+        if not isinstance(current_data, list):
+            current_data = [current_data]
+        
+        # 2. Cleanup "Unassigned" placeholder
+        if "Unassigned" in current_data and agent_name != "Unassigned":
+            current_data.remove("Unassigned")
+            
+        # 3. Toggle Logic
+        if agent_name in current_data:
+            # If agent is present, remove it (Toggle OFF)
+            current_data.remove(agent_name)
+            if not current_data: current_data = ["Unassigned"]
+        else:
+            # If agent is missing, add it (Toggle ON)
+            current_data.append(agent_name)
+            
+        # 4. Save back to the graph
+        self.G.nodes[node_id]['agent'] = current_data
 
     def on_double_click(self, event):
         # 1. Check if a NODE was double-clicked (Existing Logic)
@@ -952,6 +1001,7 @@ class GraphBuilderApp:
         if not fp: return
 
         nodes_dict = {}
+        # Initialize authorities map for all known agents
         agent_authorities = {name: [] for name in self.agents.keys()}
 
         for nid, d in g.nodes(data=True):
@@ -963,16 +1013,24 @@ class GraphBuilderApp:
             
             nodes_dict[label] = {"Type": combined_type, "UserData": label}
             
-            agent_name = d.get('agent', 'Unassigned')
-            if agent_name in agent_authorities:
-                agent_authorities[agent_name].append(label)
+            # --- UPDATED: Handle Shared Authority (List of Agents) ---
+            # Get agent list, ensure it is a list
+            ag_list = d.get('agent', ["Unassigned"])
+            if not isinstance(ag_list, list): 
+                ag_list = [ag_list]
+            
+            # Add this node to the authority list of EVERY agent assigned
+            for ag in ag_list:
+                if ag in agent_authorities:
+                    agent_authorities[ag].append(label)
+            # ---------------------------------------------------------
 
         edges_list = []
-        for u, v, d in g.edges(data=True): # Note: data=True
+        for u, v, d in g.edges(data=True): 
             u_lbl = g.nodes[u].get('label', f"Node_{u}")
             v_lbl = g.nodes[v].get('label', f"Node_{v}")
             
-            # SAVE THE EDGE TYPE
+            # Save Edge Type
             e_type = d.get('type', config.EDGE_TYPE_HARD)
             
             edges_list.append({
@@ -980,7 +1038,7 @@ class GraphBuilderApp:
                 "Target": v_lbl,
                 "UserData": {
                     "QOS": "",
-                    "type": e_type # <--- Saved here
+                    "type": e_type 
                 }
             })
 
@@ -1012,21 +1070,24 @@ class GraphBuilderApp:
             
             graph_data = data["GraphData"]
             
-            # --- 1. Load Agents ---
+            # --- 1. Load Agents (Aggregating Authority) ---
             raw_agents = graph_data.get("Agents", {})
             import random
             
             def get_random_color():
                 return "#" + ''.join([random.choice('ABCDEF89') for _ in range(6)])
 
-            label_to_agent = {} 
+            label_to_agents = {} 
             
             for agent_name, agent_data in raw_agents.items():
                 if agent_name not in self.agents:
                     self.agents[agent_name] = get_random_color()
                 
                 for node_label in agent_data.get("Authority", []):
-                    label_to_agent[node_label] = agent_name
+                    # Append instead of overwrite
+                    if node_label not in label_to_agents:
+                        label_to_agents[node_label] = []
+                    label_to_agents[node_label].append(agent_name)
 
             # --- 2. Load Nodes ---
             nodes_data = graph_data.get("Nodes", {})
@@ -1052,10 +1113,7 @@ class GraphBuilderApp:
                     layer_prefix = combined_type.replace("Resource", "")
                 
                 # 2. Determine Layer
-                # We normalize both strings to ignore spaces and casing for comparison
-                # e.g. "DistributedWork" matches "Distributed Work"
                 node_layer = "Base Environment" # Default fallback
-                
                 normalized_prefix = layer_prefix.lower().replace(" ", "")
                 
                 for known_layer in config.LAYER_ORDER:
@@ -1073,14 +1131,20 @@ class GraphBuilderApp:
                 pos_x = layer_x_counters[node_layer]
                 layer_x_counters[node_layer] += 120 
                 
-                assigned_agent = label_to_agent.get(label_key, "Unassigned")
+                # --- UPDATED: Retrieve List of Agents ---
+                # We use 'label_to_agents' (plural) which we built in Step 1
+                assigned_agents = label_to_agents.get(label_key, ["Unassigned"])
+                
+                # Safety check: If list is empty, default to Unassigned
+                if not assigned_agents: 
+                    assigned_agents = ["Unassigned"]
                 
                 self.G.add_node(i, 
                                 pos=(pos_x, pos_y), 
                                 layer=node_layer, 
                                 type=node_type, 
                                 label=user_data_lbl, 
-                                agent=assigned_agent)
+                                agent=assigned_agents) # Pass the list here
                 
                 label_to_id[label_key] = i
 

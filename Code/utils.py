@@ -23,10 +23,6 @@ def calculate_metric(G, metric_name):
             avg_deg = sum([d for _, d in G.degree()]) / n
             return f"{avg_deg:.2f}"
         
-        if metric_name == "Avg Clustering": 
-            avg_clust = nx.average_clustering(G.to_undirected())
-            return f"{avg_clust:.3f}"
-        
         if metric_name == "Avg Cycle Length":
             try:
                 cycles = list(nx.simple_cycles(G))
@@ -132,6 +128,74 @@ def calculate_metric(G, metric_name):
                 return "Robust (1 Comp)"
             else:
                 return f"Fractured ({num_components} Comps)"
+            
+        # SHARED AUTHORITY METRICS
+
+        if metric_name == "Functional Redundancy":
+            # Concept: Average number of agents capable of performing a function.
+            # 1.0 = Brittle (No backup). >1.2 = Resilient.
+            total_agents = 0
+            func_count = 0
+            for n, d in G.nodes(data=True):
+                if d.get('type') == 'Function':
+                    # Get list of agents, handling single strings if necessary
+                    ag = d.get('agent', [])
+                    if not isinstance(ag, list): ag = [ag]
+                    
+                    # Count real agents (exclude "Unassigned")
+                    real_agents = [x for x in ag if x != "Unassigned"]
+                    total_agents += len(real_agents)
+                    func_count += 1
+            
+            if func_count == 0: return "0.0"
+            avg = total_agents / func_count
+            return f"{avg:.2f} (Avg Agents)"
+
+        if metric_name == "Agent Criticality":
+            # Concept: The "Bus Factor". Which agent is the sole authority 
+            # for the most functions? (If they disconnect, these functions fail).
+            agent_sole_counts = {}
+            
+            for n, d in G.nodes(data=True):
+                if d.get('type') == 'Function':
+                    ag = d.get('agent', [])
+                    if not isinstance(ag, list): ag = [ag]
+                    real_agents = [x for x in ag if x != "Unassigned"]
+                    
+                    # If exactly one agent owns this, they are critical to it.
+                    if len(real_agents) == 1:
+                        sole_agent = real_agents[0]
+                        agent_sole_counts[sole_agent] = agent_sole_counts.get(sole_agent, 0) + 1
+            
+            if not agent_sole_counts: 
+                return "None (Robust)"
+            
+            # Find the agent with the highest count
+            worst_agent = max(agent_sole_counts, key=agent_sole_counts.get)
+            count = agent_sole_counts[worst_agent]
+            return f"{worst_agent} ({count} Sole Tasks)"
+        
+        if metric_name == "Collaboration Ratio":
+            # Percentage of functions that involve multiple agents
+            shared_funcs = 0
+            total_funcs = 0
+            for n, d in G.nodes(data=True):
+                if d.get('type') == 'Function':
+                    ag = d.get('agent', [])
+                    if not isinstance(ag, list): ag = [ag]
+                    
+                    # Filter out 'Unassigned' to count real agents
+                    real_agents = [x for x in ag if x != "Unassigned"]
+                    
+                    if len(real_agents) > 0:
+                        total_funcs += 1
+                        # If more than 1 agent is assigned, it's a collaborative task
+                        if len(real_agents) > 1:
+                            shared_funcs += 1
+            
+            if total_funcs == 0: return "0.0%"
+            ratio = (shared_funcs / total_funcs) * 100
+            return f"{ratio:.1f}%"
             
     except Exception as e:
         print(f"Error calculating {metric_name}: {e}")
