@@ -1,6 +1,5 @@
 # components.py
-# Contains custom UI widgets. The InteractiveComparisonPanel is isolated here. 
-# This makes it reusable and easier to fix drawing bugs.
+# Contains custom UI widgets, the InteractiveComparisonPanel is isolated here
 
 import tkinter as tk
 import math
@@ -85,7 +84,7 @@ class InteractiveComparisonPanel:
         self.canvas.delete("all")
         r = self.node_radius * self.zoom 
         
-        # --- 1. DRAW HIGHLIGHTS (This is the part likely missing) ---
+        # Draw Highlights
         if self.highlights:
             edge_counts = {}
             
@@ -93,7 +92,7 @@ class InteractiveComparisonPanel:
                 color = h.get('color', 'yellow')
                 width = h.get('width', 8) * self.zoom
                 
-                # Draw Nodes (Halo)
+                # Draw Nodes
                 for n in h.get('nodes', []):
                     wx, wy = self.G.nodes[n].get('pos', (0,0))
                     sx, sy = self.to_screen(wx, wy)
@@ -125,7 +124,7 @@ class InteractiveComparisonPanel:
                     self.canvas.create_line(sx1+os_x, sy1+os_y, sx2+os_x, sy2+os_y, 
                                           fill=color, width=width, capstyle=tk.ROUND, joinstyle=tk.ROUND)
 
-        # --- 2. DRAW STANDARD GRAPH (Edges & Nodes) ---
+        # DRAW STANDARD GRAPH (Edges & Nodes)
         # Edges
         for u, v in self.G.edges():
             p1 = self.G.nodes[u].get('pos', (0,0))

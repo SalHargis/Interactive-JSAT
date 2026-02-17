@@ -5,13 +5,11 @@ import config
 def calculate_metric(G, metric_name):
     """
     Calculates metrics. Includes:
-    Originals: Density, Clustering, Cycles, Interdependence, etc.
-    New: Global Efficiency, Modularity.
+    Originals: Density, Clustering, Cycles, Interdependence, etc
     """
     try:
         n = G.number_of_nodes()
         
-        # --- ORIGINAL METRICS ---
         if metric_name == "Nodes": return str(n)
         if metric_name == "Edges": return str(G.number_of_edges())
         if n == 0: return "0"
@@ -66,8 +64,6 @@ def calculate_metric(G, metric_name):
                 return str(count)
             except: return "Err"
 
-        # --- NEW METRICS ONLY ---
-
         if metric_name == "Global Efficiency":
             # Measures how integrated the system is (0.0 to 1.0)
             try:
@@ -85,8 +81,8 @@ def calculate_metric(G, metric_name):
                 return f"Q={q_score:.2f} ({num_communities} Grps)"
             except: return "Err"
 
-        if metric_name == "Brittleness Ratio":
-            # A. Brittleness: Ratio of Soft to Hard edges
+        if metric_name == "Brittleness Ratio": # This isn't a great name, will rename the button
+            # A. Ratio of Soft to Hard edges
             soft = sum(1 for u, v, d in G.edges(data=True) if d.get('type') == config.EDGE_TYPE_SOFT)
             hard = sum(1 for u, v, d in G.edges(data=True) if d.get('type') == config.EDGE_TYPE_HARD)
             
@@ -101,7 +97,7 @@ def calculate_metric(G, metric_name):
             # 1. Total Efficiency
             eff_total = nx.global_efficiency(G.to_undirected())
             
-            # 2. Hard-Only Efficiency
+            # 2. Hard-edges Only Efficiency
             hard_edges = [(u, v) for u, v, d in G.edges(data=True) if d.get('type') == config.EDGE_TYPE_HARD]
             G_hard = nx.Graph()
             G_hard.add_nodes_from(G.nodes())
@@ -113,11 +109,11 @@ def calculate_metric(G, metric_name):
 
         if metric_name == "Critical Vulnerability":
             # C. Critical Path Vulnerability: 
-            # Does the graph shatter if soft edges are removed?
+            # Does the graph fragment if soft edges are removed?
             # Measures Connected Components of the Hard-Only graph.
             
             hard_edges = [(u, v) for u, v, d in G.edges(data=True) if d.get('type') == config.EDGE_TYPE_HARD]
-            G_hard = nx.DiGraph() # Use Directed to catch strict flow breaks
+            G_hard = nx.DiGraph() # di-graph to catch strict flow breaks
             G_hard.add_nodes_from(G.nodes())
             G_hard.add_edges_from(hard_edges)
             
@@ -129,11 +125,11 @@ def calculate_metric(G, metric_name):
             else:
                 return f"Fractured ({num_components} Comps)"
             
-        # SHARED AUTHORITY METRICS
+        ### Metric Ideas for analyzing SHared Authority
 
         if metric_name == "Functional Redundancy":
-            # Concept: Average number of agents capable of performing a function.
-            # 1.0 = Brittle (No backup). >1.2 = Resilient.
+            # "Average number of agents" capable of performing a function.
+            # Idea: 1.0 = Brittle (No backup), >1.2 = Resilient (more backups)
             total_agents = 0
             func_count = 0
             for n, d in G.nodes(data=True):
@@ -152,8 +148,8 @@ def calculate_metric(G, metric_name):
             return f"{avg:.2f} (Avg Agents)"
 
         if metric_name == "Agent Criticality":
-            # Concept: The "Bus Factor". Which agent is the sole authority 
-            # for the most functions? (If they disconnect, these functions fail).
+            # try to find the agent with the most "authority" in the system
+            # for the most functions? (If they disconnect, these functions fail)
             agent_sole_counts = {}
             
             for n, d in G.nodes(data=True):
@@ -162,7 +158,7 @@ def calculate_metric(G, metric_name):
                     if not isinstance(ag, list): ag = [ag]
                     real_agents = [x for x in ag if x != "Unassigned"]
                     
-                    # If exactly one agent owns this, they are critical to it.
+                    # If exactly one agent owns this, they are critical to it
                     if len(real_agents) == 1:
                         sole_agent = real_agents[0]
                         agent_sole_counts[sole_agent] = agent_sole_counts.get(sole_agent, 0) + 1
@@ -176,7 +172,7 @@ def calculate_metric(G, metric_name):
             return f"{worst_agent} ({count} Sole Tasks)"
         
         if metric_name == "Collaboration Ratio":
-            # Percentage of functions that involve multiple agents
+            # Percent of functions that involve multiple agents
             shared_funcs = 0
             total_funcs = 0
             for n, d in G.nodes(data=True):
@@ -184,12 +180,12 @@ def calculate_metric(G, metric_name):
                     ag = d.get('agent', [])
                     if not isinstance(ag, list): ag = [ag]
                     
-                    # Filter out 'Unassigned' to count real agents
+                    # Filter out 'Unassigned' (only count other agents)
                     real_agents = [x for x in ag if x != "Unassigned"]
                     
                     if len(real_agents) > 0:
                         total_funcs += 1
-                        # If more than 1 agent is assigned, it's a collaborative task
+                        # if more than 1 agent is assigned then it's a collaborative task
                         if len(real_agents) > 1:
                             shared_funcs += 1
             

@@ -13,7 +13,7 @@ def get_cycle_highlights(G):
         return []
 
     highlights = []
-    # A palette of high-contrast "neon" colors for the glow effect
+    # high-contrast "neon" colors for the glow effect
     neon_colors = [
         "#FF1493", # DeepPink
         "#00FF00", # Lime
@@ -32,19 +32,18 @@ def get_cycle_highlights(G):
         cycle_edges = []
         for j in range(len(path)):
             u = path[j]
-            v = path[(j + 1) % len(path)] # Connect last node back to first
+            v = path[(j + 1) % len(path)] # connect last node back to first
             cycle_edges.append((u, v))
             
         highlights.append({
             "nodes": path,
             "edges": cycle_edges,
             "color": color,
-            "width": 8 # Offset width slightly so overlapping cycles are visible
+            "width": 8 # offset width slightly so overlapping cycles are visible
         })
         
     return highlights
 
-# metric_visualizations.py (formerly visual_analytics.py)
 import networkx as nx
 
 def get_single_cycle_highlight(G, cycle_index):
@@ -59,7 +58,7 @@ def get_single_cycle_highlight(G, cycle_index):
             
         path = cycles[cycle_index]
         
-        # Same palette as 'get_cycle_highlights' for consistency
+        # Same as 'get_cycle_highlights'
         neon_colors = [
             "#FF1493", # DeepPink
             "#00C000", # Darker Lime (Readable on white)
@@ -71,7 +70,6 @@ def get_single_cycle_highlight(G, cycle_index):
             "#060C12", # DodgerBlue
         ]
         
-        # Pick color based on index so it matches the button
         color = neon_colors[cycle_index % len(neon_colors)]
         
         cycle_edges = []
@@ -113,10 +111,9 @@ def get_interdependence_highlights(G):
     return [{
         "nodes": list(involved_nodes),
         "edges": cross_edges,
-        "color": "#FF0000", # Bright Red for critical dependencies
+        "color": "#FF0000", # highlight color of interdependency
         "width": 8
     }]
-# metric_visualizations.py
 
 def get_modularity_highlights(G):
     """
@@ -125,7 +122,7 @@ def get_modularity_highlights(G):
     """
     try:
         # 1. Detect Communities
-        # Returns a list of sets: [{n1, n2}, {n3, n4}...]
+        # Return list of sets: [{n1, n2}, {n3, n4}...]
         communities = nx.community.greedy_modularity_communities(G.to_undirected())
         
         highlights = []
@@ -146,7 +143,7 @@ def get_modularity_highlights(G):
             color = community_colors[i % len(community_colors)]
             nodes_list = list(community_set)
             
-            # Find edges that stay COMPLETELY within this community
+            # Find edges that stay completely within this community
             intra_edges = []
             for u in nodes_list:
                 for v in nodes_list:
@@ -158,7 +155,7 @@ def get_modularity_highlights(G):
                 "nodes": nodes_list,
                 "edges": intra_edges,
                 "color": color,
-                "width": 10 # Thick highlight for groups
+                "width": 10 
             })
             
         return highlights
@@ -172,10 +169,10 @@ def get_single_modularity_highlight(G, group_index):
     Highlights ONLY the specific community group at the given index.
     """
     try:
-        # 1. Detect Communities (Must use same method as the main visualizer)
+        # 1. Detect Communities
         communities = list(nx.community.greedy_modularity_communities(G.to_undirected()))
         
-        # Sort by size (largest first) to keep UI consistent
+        # Sort by size
         communities.sort(key=len, reverse=True)
         
         if group_index < 0 or group_index >= len(communities):
@@ -183,7 +180,7 @@ def get_single_modularity_highlight(G, group_index):
             
         target_group = list(communities[group_index])
         
-        # 2. Match Colors (Use same palette as full view for consistency)
+        # 2. Match Colors 
         community_colors = [
             "#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", 
             "#98D8C8", "#F7DC6F", "#BB8FCE", "#B2BABB"
