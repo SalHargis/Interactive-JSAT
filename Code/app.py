@@ -51,6 +51,7 @@ class GraphBuilderApp:
         self.sidebar_drag_data = None
         self.current_highlights = [] 
         self.active_vis_mode = None
+        self.is_sidebar_dragging = False
 
         # View Settings
         self.zoom = 1.0
@@ -92,6 +93,10 @@ class GraphBuilderApp:
         self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
         self.canvas.bind("<Double-Button-1>", self.on_double_click)
+
+        # Right Click Binding (Mac uses Button-2, Windows/Linux Button-3)
+        self.canvas.bind("<Button-3>", self.on_right_click) 
+        self.canvas.bind("<Button-2>", self.on_right_click) # For some MacOS configs
         
         # Zooming
         self.canvas.bind("<MouseWheel>", self.on_zoom)      
@@ -286,22 +291,23 @@ class GraphBuilderApp:
 
     # Drawing Logic
 
-    def redraw(self):
+    def redraw(self, rebuild_dash=True):
         self.canvas.delete("all")
         
         # 1. Background Layers
         if self.view_mode == config.VIEW_MODE_JSAT:
             self._draw_layer_lines()
             
-        # 2. Highlights (Behind nodes)
+        # 2. Highlights
         self._draw_highlights()
         
         # 3. Graph Content
         self._draw_edges()
         self._draw_nodes()
         
-        # 4. Refresh Dashboard (Consider optimizing this to not run on every drag)
-        if not self.is_dragging:
+        # 4. Refresh Dashboard
+        # Only rebuild if explicitly requested AND not currently dragging sidebar
+        if rebuild_dash and not self.is_dragging:
             self.rebuild_dashboard()
 
     def _draw_layer_lines(self):
@@ -440,20 +446,23 @@ class GraphBuilderApp:
     # Dashboard Builders 
 
     def rebuild_dashboard(self):
-        # Preserve Scroll
+        # dictionary for the drag-and-drop geometry check
+        self.agent_ui_frames = {}
+
+        # preserve scroll position
         try: scroll_pos = self.scroll_canvas.yview()[0]
         except: scroll_pos = 0.0
 
-        # Clear
+        # clear existing widgets
         for w in self.inspector_frame.winfo_children(): w.destroy()
         for w in self.scrollable_content.winfo_children(): w.destroy()
 
         # Build Sections
         self._build_stats_section()
-        self._build_agent_section()
+        self._build_agent_section() # This populates self.agent_ui_frames
         self._build_inspector_section()
         
-        # Restore Scroll
+        # restore scroll
         self.scrollable_content.update_idletasks()
         self.scroll_canvas.configure(scrollregion=self.scroll_canvas.bbox("all"))
         self.scroll_canvas.yview_moveto(scroll_pos)
@@ -520,11 +529,12 @@ class GraphBuilderApp:
     def _build_agent_section(self):
         tk.Label(self.scrollable_content, text="Agent Overview", font=("Arial", 14, "bold"), bg="#f0f0f0").pack(fill=tk.X, pady=(15, 2))
         
+        # Top Controls
         ctrl = tk.Frame(self.scrollable_content, bg="#e0e0e0", bd=1, relief=tk.RAISED)
         ctrl.pack(fill=tk.X, padx=5, pady=5)
         tk.Button(ctrl, text="New Agent", command=self.create_agent, bg="white").pack(pady=5)
 
-        # Group Nodes by Agent
+        # 1. Group Nodes
         agent_map = {name: [] for name in self.agents}
         for n, d in self.G.nodes(data=True):
             ag_list = d.get('agent', ["Unassigned"])
@@ -534,31 +544,47 @@ class GraphBuilderApp:
                 if target not in agent_map: agent_map[target] = []
                 agent_map[target].append(n)
 
-        # Create UI
+        # 2. Build UI
         for name, color in self.agents.items():
             af = tk.Frame(self.scrollable_content, bg="#e0e0e0", bd=1, relief=tk.RAISED)
             af.pack(fill=tk.X, pady=2, padx=5)
-            af.agent_name = name # For drag-n-drop
             
-            # Header
+            # Save frame for drag-and-drop geometry check
+            self.agent_ui_frames[name] = af
+            
+            # Agent Header
             hf = tk.Frame(af, bg="#e0e0e0"); hf.pack(fill=tk.X)
             tk.Label(hf, bg=color, width=3).pack(side=tk.LEFT, padx=5, fill=tk.X)
             lbl = tk.Label(hf, text=name, bg="#e0e0e0", font=("Arial", 10, "bold"))
             lbl.pack(side=tk.LEFT, fill=tk.X)
             lbl.bind("<Button-1>", lambda e, a=name: self.edit_agent(a))
 
-            # Nodes
+            # Nodes List
             nodes = agent_map.get(name, [])
             if nodes:
                 for nid in nodes:
                     lbl_text = self.G.nodes[nid].get('label', str(nid))
-                    b = tk.Button(af, text=f"• {lbl_text}", anchor="w", bg="white", relief=tk.FLAT, font=("Arial", 9))
-                    b.config(command=lambda n=nid: self.handle_click(n))
-                    b.pack(fill=tk.X, padx=10, pady=1)
                     
-                    # Sidebar Drag Logic
-                    b.bind("<Button-1>", lambda e, n=nid: self.on_sidebar_node_press(e, n))
-                    b.bind("<ButtonRelease-1>", self.on_sidebar_node_release)
+                    # --- THE FIX: Use Label instead of Button ---
+                    # We style it with relief and border to LOOK like a button
+                    btn = tk.Label(af, text=f" {lbl_text}", anchor="w", 
+                                   bg="white", 
+                                   font=("Arial", 11),       # Larger Font
+                                   bd=2, relief=tk.RAISED,   # 3D Button Look
+                                   padx=10, pady=5,          # Larger Click Area
+                                   cursor="hand2")           # Hand Cursor
+                    
+                    btn.pack(fill=tk.X, padx=5, pady=2)
+                    
+                    # Bindings
+                    btn.bind("<Button-1>", lambda e, n=nid: self.on_sidebar_node_press(e, n))
+                    btn.bind("<Button-3>", lambda e, n=nid: self.open_sharing_dialog(n))
+                    btn.bind("<Button-2>", lambda e, n=nid: self.open_sharing_dialog(n))
+                    
+                    # Hover Effect (Optional polish)
+                    btn.bind("<Enter>", lambda e, b=btn: b.config(bg="#f0f8ff"))
+                    btn.bind("<Leave>", lambda e, b=btn: b.config(bg="white"))
+
             else:
                 tk.Label(af, text="(Empty)", bg="#e0e0e0", fg="#666", font=("Arial", 8, "italic")).pack(anchor="w", padx=10)
 
@@ -1065,23 +1091,47 @@ class GraphBuilderApp:
         return closest
 
     def on_sidebar_node_press(self, event, node_id):
+        # 1. Set Drag Data
         self.sidebar_drag_data = node_id
+        
+        # 2. Manually Select the Node (Update internal state)
+        self.selected_node = node_id
+        self.inspected_node = node_id
+        
+        # 3. Redraw the CANVAS ONLY (Blue outline)
+        # We pass False here so the sidebar buttons are NOT destroyed/recreated
+        self.redraw(rebuild_dash=False)
+        
+        # 4. Setup Global Release (Start the Drag)
         self.root.config(cursor="hand2")
+        self.root.bind("<ButtonRelease-1>", self.on_sidebar_node_release)
 
     def on_sidebar_node_release(self, event):
         self.root.config(cursor="")
-        if not self.sidebar_drag_data: return
-        
-        target = self.root.winfo_containing(event.x_root, event.y_root)
-        while target:
-            if hasattr(target, "agent_name"):
+        self.root.unbind("<ButtonRelease-1>")
+
+        if self.sidebar_drag_data:
+            mx, my = event.x_root, event.y_root
+            target_agent = None
+
+            # Geometry Check
+            for name, frame in self.agent_ui_frames.items():
+                fx, fy = frame.winfo_rootx(), frame.winfo_rooty()
+                fw, fh = frame.winfo_width(), frame.winfo_height()
+                
+                if fx <= mx <= fx + fw and fy <= my <= fy + fh:
+                    target_agent = name
+                    break
+            
+            # Apply Move
+            if target_agent:
                 self.save_state()
-                self.assign_agent_logic(self.sidebar_drag_data, target.agent_name)
-                self.redraw()
-                break
-            target = target.master
-            if target == self.root: break
-        self.sidebar_drag_data = None
+                self.G.nodes[self.sidebar_drag_data]['agent'] = [target_agent]
+                
+            self.sidebar_drag_data = None
+
+        # NOW we allow the dashboard to rebuild to show the changes
+        self.redraw(rebuild_dash=True)
 
     def find_edge_at(self, x, y):
         threshold = 8 
@@ -1133,3 +1183,50 @@ class GraphBuilderApp:
         self.current_highlights = hl
         self.active_vis_mode = f"mod_group_{index}"
         self.redraw()
+    
+    def on_right_click(self, event):
+        node = self._get_node_at(event.x, event.y)
+        if node is not None:
+            self.open_sharing_dialog(node)
+
+    def open_sharing_dialog(self, node_id):
+        win = Toplevel(self.root)
+        win.title("Share Authority")
+        win.geometry("300x400")
+        
+        current_label = self.G.nodes[node_id].get('label', 'Node')
+        tk.Label(win, text=f"Share '{current_label}' with:", font=("Arial", 11, "bold")).pack(pady=10)
+
+        frame = tk.Frame(win)
+        frame.pack(fill=tk.BOTH, expand=True, padx=10)
+
+        # get current agents assigned to this node
+        current_agents = self.G.nodes[node_id].get('agent', ["Unassigned"])
+        if not isinstance(current_agents, list): current_agents = [current_agents]
+
+        # hold True/False variables for each agent
+        check_vars = {}
+
+        for agent_name in self.agents.keys():
+            var = tk.BooleanVar(value=(agent_name in current_agents))
+            check_vars[agent_name] = var
+            
+            cb = tk.Checkbutton(frame, text=agent_name, variable=var, anchor="w", font=("Arial", 10))
+            cb.pack(fill=tk.X, pady=2)
+
+        def save_shares():
+            # colect all checked agents
+            selected = [name for name, var in check_vars.items() if var.get()]
+            
+            # fallback if none selected
+            if not selected: selected = ["Unassigned"]
+
+            self.save_state()
+            self.G.nodes[node_id]['agent'] = selected
+            self.redraw()
+            win.destroy()
+
+        # footer buttons
+        btn_frame = tk.Frame(win, pady=10)
+        btn_frame.pack(fill=tk.X)
+        tk.Button(btn_frame, text="Apply Shares", command=save_shares, bg="#90ee90", height=2).pack(fill=tk.X, padx=10)
