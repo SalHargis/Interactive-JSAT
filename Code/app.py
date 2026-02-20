@@ -1072,10 +1072,62 @@ class GraphBuilderApp:
                     val = calculate_metric(g, m)
                     tk.Label(grid_f, text=str(val), font=("Arial", 12), relief="solid", bd=1).grid(row=r+1, column=c+1, sticky="nsew")
 
+        # --- THE FIX: Node Comparison Callback ---
+        def on_node_clicked(node_label):
+            # Clear previous inspector contents
+            for child in inspector_frame.winfo_children():
+                child.destroy()
+                
+            tk.Label(inspector_frame, text=f"Node Inspector: '{node_label}'", font=("Arial", 12, "bold"), bg="#f0f0f0").pack(pady=5, anchor="w", padx=10)
+            
+            table_f = tk.Frame(inspector_frame, bg="white", bd=1, relief="solid")
+            table_f.pack(fill=tk.X, padx=10, pady=5)
+            
+            # Table Headers
+            tk.Label(table_f, text="Node Metric", font=("Arial", 10, "bold"), relief="solid", bd=1, bg="#e0e0e0", width=18).grid(row=0, column=0, sticky="nsew")
+            for i, (g_name, _) in enumerate(graph_list):
+                tk.Label(table_f, text=g_name, font=("Arial", 10, "bold"), relief="solid", bd=1, bg="#e0e0e0", width=15).grid(row=0, column=i+1, sticky="nsew")
+            
+            node_metrics = ["In-Degree", "Out-Degree", "Degree Centrality", "Betweenness", "Eigenvector"]
+            for r, m in enumerate(node_metrics):
+                tk.Label(table_f, text=m, font=("Arial", 10), relief="solid", bd=1, anchor="w", padx=5).grid(row=r+1, column=0, sticky="nsew")
+            
+            # Populate Data
+            for col, (g_name, g) in enumerate(graph_list):
+                # 1. Find the node ID by its string label
+                target_id = None
+                for n, d in g.nodes(data=True):
+                    if d.get('label') == node_label:
+                        target_id = n
+                        break
+                
+                # 2. If node doesn't exist in this graph, fill with dashes
+                if target_id is None:
+                    for r in range(len(node_metrics)):
+                        tk.Label(table_f, text="-", font=("Arial", 10), relief="solid", bd=1).grid(row=r+1, column=col+1, sticky="nsew")
+                    continue
+                
+                # 3. Calculate metrics safely
+                def safe_m(func, **kwargs):
+                    try: return f"{func(g, **kwargs)[target_id]:.3f}"
+                    except: return "0.000"
+
+                vals = [
+                    str(g.in_degree(target_id)),
+                    str(g.out_degree(target_id)),
+                    safe_m(nx.degree_centrality),
+                    safe_m(nx.betweenness_centrality),
+                    safe_m(nx.eigenvector_centrality, max_iter=100, tol=1e-04)
+                ]
+                
+                for r, val in enumerate(vals):
+                    tk.Label(table_f, text=val, font=("Arial", 10), relief="solid", bd=1).grid(row=r+1, column=col+1, sticky="nsew")
+        # -----------------------------------------
+
         # Initialize Panels
         for name, g in graph_list:
-            # We assume a dummy callback for inspector refresh as strict wiring isn't the focus of this refactor
-            p = InteractiveComparisonPanel(graph_container, g, name, config.NODE_RADIUS, self.agents, None, lambda x: None)
+            # We now pass `on_node_clicked` instead of `lambda x: None`
+            p = InteractiveComparisonPanel(graph_container, g, name, config.NODE_RADIUS, self.agents, None, on_node_clicked)
             panels.append((name, p))
             
         refresh_grid()

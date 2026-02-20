@@ -138,14 +138,38 @@ class InteractiveComparisonPanel:
             wx, wy = d.get('pos', (0,0))
             sx, sy = self.to_screen(wx, wy)
             
-            ag = d.get('agent', "Unassigned")
-            fill = self.agents.get(ag, "white")
-            if '_color_cache' in d: fill = d['_color_cache']
+            # --- SHARED AUTHORITY FIX ---
+            ag_list = d.get('agent', ["Unassigned"])
+            if not isinstance(ag_list, list): 
+                ag_list = [ag_list]
 
             if d.get('type') == "Function":
-                self.canvas.create_rectangle(sx-r, sy-r, sx+r, sy+r, fill=fill, outline="black")
+                # Draw split rectangle for Functions
+                total_w = (r * 2)
+                strip_w = total_w / len(ag_list)
+                start_x = sx - r
+                
+                for i, ag in enumerate(ag_list):
+                    fill = self.agents.get(ag, "white")
+                    x1 = start_x + (i * strip_w)
+                    x2 = start_x + ((i + 1) * strip_w)
+                    self.canvas.create_rectangle(x1, sy-r, x2, sy+r, fill=fill, outline="")
+                    
+                self.canvas.create_rectangle(sx-r, sy-r, sx+r, sy+r, fill="", outline="black", width=1)
             else:
-                self.canvas.create_oval(sx-r, sy-r, sx+r, sy+r, fill=fill, outline="black")
+                # Draw split circle for Resources
+                if len(ag_list) == 1:
+                    fill = self.agents.get(ag_list[0], "white")
+                    self.canvas.create_oval(sx-r, sy-r, sx+r, sy+r, fill=fill, outline="black", width=1)
+                else:
+                    extent = 360 / len(ag_list)
+                    start_angle = 90
+                    for ag in ag_list:
+                        fill = self.agents.get(ag, "white")
+                        self.canvas.create_arc(sx-r, sy-r, sx+r, sy+r, start=start_angle, extent=extent, fill=fill, outline="")
+                        start_angle += extent
+                    self.canvas.create_oval(sx-r, sy-r, sx+r, sy+r, fill="", outline="black", width=1)
+            # ----------------------------
             
             lbl = d.get('label', '')
             font_size = max(15, int(10 * self.zoom))
