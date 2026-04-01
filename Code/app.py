@@ -6,13 +6,11 @@ import json
 import random
 from PIL import ImageGrab
 
-# external modules / files from project
 import config
 from utils import calculate_metric
 from components import InteractiveComparisonPanel, CreateToolTip
 import metric_visualizations
 
-# descriptions of metrics (hover-over-able)
 METRIC_DESCRIPTIONS = {
     "Density": "The ratio of actual connections to potential connections.\nHigh density = highly connected.",
     "Cyclomatic Number": "The number of fundamental independent loops.\nMeasures the structural complexity of feedback.",
@@ -35,13 +33,13 @@ class GraphBuilderApp:
         self.root.title("Interactive JSAT")
         self.root.geometry("1400x900")
         
-        # Backend Data 
+        # Graph Backend
         self.G = nx.DiGraph()
         self.saved_archs = {} 
         self.undo_stack = []
         self.redo_stack = []
         
-        # State 
+        # Interaction State 
         self.selected_node = None     
         self.inspected_node = None    
         self.drag_node = None       
@@ -53,13 +51,13 @@ class GraphBuilderApp:
         self.active_vis_mode = None
         self.is_sidebar_dragging = False
 
-        # View Settings
+        # Viewport Settings
         self.zoom = 1.0
         self.offset_x = 0
         self.offset_y = 0
         self.pan_start = None 
         
-        # Mode Settings
+        # Application Modes
         self.mode = "SELECT"
         self.mode_buttons = {}
         self.view_mode = config.VIEW_MODE_FREE
@@ -70,57 +68,48 @@ class GraphBuilderApp:
         self.setup_ui()
         
     def setup_ui(self):
-        # Toolbar
         toolbar_frame = tk.Frame(self.root, bd=1, relief=tk.RAISED)
         toolbar_frame.pack(side=tk.TOP, fill=tk.X)
         self.build_toolbar(toolbar_frame)
 
-        # Main Layout
         main_container = tk.Frame(self.root)
         main_container.pack(fill=tk.BOTH, expand=True)
 
-        # 1. Dashboard (Right Side)
+        # Dashboard (Right)
         self.dashboard_frame = tk.Frame(main_container, width=350, bg="#f0f0f0", bd=1, relief=tk.SUNKEN)
         self.dashboard_frame.pack(side=tk.RIGHT, fill=tk.Y)
         self.dashboard_frame.pack_propagate(False)
 
-        # 2. Canvas (Left Side)
+        # Graph Canvas (Left)
         self.canvas = tk.Canvas(main_container, bg="white")
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
-        # Canvas Bindings
+        # Input Bindings
         self.canvas.bind("<Button-1>", self.on_mouse_down)
         self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
         self.canvas.bind("<Double-Button-1>", self.on_double_click)
-
-        # Right Click Binding (Mac uses Button-2, Windows/Linux Button-3)
         self.canvas.bind("<Button-3>", self.on_right_click) 
-        self.canvas.bind("<Button-2>", self.on_right_click) # For some MacOS configs
-        
-        # Zooming
+        self.canvas.bind("<Button-2>", self.on_right_click) 
         self.canvas.bind("<MouseWheel>", self.on_zoom)      
         self.canvas.bind("<Button-4>", lambda e: self.on_zoom(e, 1))  
         self.canvas.bind("<Button-5>", lambda e: self.on_zoom(e, -1)) 
 
-        # 3. Dashboard Content
         self._setup_dashboard_structure()
 
-        # Footer Status
         self.status_label = tk.Label(self.root, text="Mode: Select & Inspect", bd=1, relief=tk.SUNKEN, anchor=tk.W)
         self.status_label.pack(side=tk.BOTTOM, fill=tk.X)
         
         self.redraw()
 
     def _setup_dashboard_structure(self):
-        """Initializes static dashboard containers."""
+        """Initializes dashboard containers and scrolling behavior."""
         tk.Label(self.dashboard_frame, text="Network Dashboard", font=("Arial", 14, "bold"), 
                  bg="#4a4a4a", fg="white", pady=8).pack(fill=tk.X)
         
         self.inspector_frame = tk.Frame(self.dashboard_frame, bg="#fff8e1", bd=2, relief=tk.GROOVE)
         self.inspector_frame.pack(fill=tk.X, padx=5, pady=5)
         
-        # Scrollable Area
         self.scroll_canvas = tk.Canvas(self.dashboard_frame, bg="#f0f0f0")
         self.scrollbar = tk.Scrollbar(self.dashboard_frame, orient="vertical", command=self.scroll_canvas.yview)
         self.scrollable_content = tk.Frame(self.scroll_canvas, bg="#f0f0f0")
@@ -132,8 +121,6 @@ class GraphBuilderApp:
         self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.scrollable_content.bind("<Configure>", lambda e: self.scroll_canvas.configure(scrollregion=self.scroll_canvas.bbox("all")))
 
-    # Coordinate Transforms
-
     def to_screen(self, wx, wy):
         return (wx * self.zoom) + self.offset_x, (wy * self.zoom) + self.offset_y
 
@@ -141,18 +128,16 @@ class GraphBuilderApp:
         return (sx - self.offset_x) / self.zoom, (sy - self.offset_y) / self.zoom
 
     def get_draw_pos(self, node_id):
-        """Calculates WORLD coordinates based on current view mode."""
+        """Calculates world coordinates. Snaps Y to layer if VIEW_MODE_JSAT is active."""
         data = self.G.nodes[node_id]
         raw_x, raw_y = data.get('pos', (100, 100))
         
-        # If dragging in JSAT mode, show raw position until dropped
         if self.view_mode == config.VIEW_MODE_JSAT and self.drag_node == node_id and self.is_dragging:
             return raw_x, raw_y
         
         if self.view_mode == config.VIEW_MODE_FREE:
             return raw_x, raw_y
             
-        # JSAT Mode: Snap Y to layer
         layer = self.get_node_layer(data)
         return raw_x, config.JSAT_LAYERS[layer]
 
@@ -161,17 +146,13 @@ class GraphBuilderApp:
             return data['layer']
         return "Base Environment" if data.get('type') == "Resource" else "Distributed Work"
 
-    # Interaction Logic
-
     def on_zoom(self, event, direction=None):
         factor = 1.1 if (direction or event.delta) > 0 else 0.9
         self.zoom *= factor
         self.redraw()
 
     def on_mouse_down(self, event):
-        # 1. Check for Node Click
         clicked_node = self._get_node_at(event.x, event.y)
-        
         if clicked_node is not None:
             self._handle_node_press(clicked_node, event)
         else:
@@ -192,13 +173,13 @@ class GraphBuilderApp:
                 self.redraw()
                 return
 
-        # Prepare for Pan or Add
         self.inspected_node = None
         self.pan_start = (event.x, event.y)
         self.is_dragging = False
         self.redraw()
 
     def on_mouse_drag(self, event):
+        # Handle Node Dragging
         if self.drag_node is not None:
             if not self.is_dragging and math.hypot(event.x - self.drag_start_pos[0], event.y - self.drag_start_pos[1]) > 5:
                 self.is_dragging = True
@@ -208,6 +189,7 @@ class GraphBuilderApp:
                 self.G.nodes[self.drag_node]['pos'] = (wx, wy)
                 self.redraw()
 
+        # Handle Canvas Panning
         elif self.pan_start is not None:
             if not self.is_dragging and math.hypot(event.x - self.pan_start[0], event.y - self.pan_start[1]) > 5:
                 self.is_dragging = True
@@ -237,15 +219,13 @@ class GraphBuilderApp:
             self.is_dragging = False
 
     def _finalize_drag(self, event):
-        self.save_state(state=self.pre_drag_graph_state) # save previous state before modification
+        self.save_state(state=self.pre_drag_graph_state)
         
-        # JSAT Snapping Logic
         if self.view_mode == config.VIEW_MODE_JSAT:
             _, world_y = self.to_world(event.x, event.y)
             new_layer = self.get_layer_from_y(world_y)
             if new_layer:
                 self.G.nodes[self.drag_node]['layer'] = new_layer
-                # Visual snap logic handled in get_draw_pos via data update
                 
         self.redraw()
 
@@ -273,7 +253,7 @@ class GraphBuilderApp:
         if self.selected_node == node_id:
             return
 
-        # Enforce Alternating connection types (Func <-> Res, no fun-->fun or res-->res)
+        # Enforcement: Connections must be bipartite (Func <-> Res)
         type_start = self.G.nodes[self.selected_node].get('type')
         type_end = self.G.nodes[node_id].get('type')
         
@@ -289,28 +269,21 @@ class GraphBuilderApp:
         self.selected_node = None
         self.redraw()
 
-    # Drawing Logic
-
     def redraw(self, rebuild_dash=True):
         self.canvas.delete("all")
         
-        # 1. Background Layers
         if self.view_mode == config.VIEW_MODE_JSAT:
             self._draw_layer_lines()
             
-        # 2. Highlights
         self._draw_highlights()
-        
-        # 3. Graph Content
         self._draw_edges()
         self._draw_nodes()
         
-        # 4. Refresh Dashboard
-        # Only rebuild if explicitly requested AND not currently dragging sidebar
         if rebuild_dash and not self.is_dragging:
             self.rebuild_dashboard()
 
     def _draw_layer_lines(self):
+        """Draws the horizontal guide lines for JSAT layers."""
         for layer_name in config.LAYER_ORDER:
             world_y = config.JSAT_LAYERS[layer_name]
             _, screen_y = self.to_screen(0, world_y)
@@ -318,6 +291,7 @@ class GraphBuilderApp:
             self.canvas.create_text(10, screen_y - 10, text=layer_name, anchor="w", fill="#888", font=("Arial", 8, "italic"))
 
     def _draw_highlights(self):
+        """Renders visual overlays for specific analytics (e.g., cycles, interdependence)."""
         if not self.current_highlights: return
         
         edge_counts = {}
@@ -325,14 +299,12 @@ class GraphBuilderApp:
             color = h.get('color', 'yellow')
             width = h.get('width', 8) * self.zoom
             
-            # Draw Nodes
             for n in h.get('nodes', []):
                 wx, wy = self.get_draw_pos(n)
                 sx, sy = self.to_screen(wx, wy)
                 rad = (config.NODE_RADIUS * self.zoom) + (width/2)
                 self.canvas.create_oval(sx-rad, sy-rad, sx+rad, sy+rad, fill=color, outline=color)
             
-            # Draw Edges (with offset for overlaps)
             for u, v in h.get('edges', []):
                 edge_key = tuple(sorted((u, v)))
                 count = edge_counts.get(edge_key, 0)
@@ -343,7 +315,6 @@ class GraphBuilderApp:
                 sx1, sy1 = self.to_screen(wx1, wy1)
                 sx2, sy2 = self.to_screen(wx2, wy2)
                 
-                # Offset logic
                 offset_step = width / 2
                 current_offset = (count * width) - offset_step
                 dx, dy = sx2 - sx1, sy2 - sy1
@@ -362,17 +333,14 @@ class GraphBuilderApp:
         for u, v, d in self.G.edges(data=True):
             e_type = d.get('type', config.EDGE_TYPE_HARD)
             
-            # Filter
             if self.edge_view_mode != "ALL" and e_type != self.edge_view_mode:
                 continue
 
-            # Style
             is_soft = (e_type == config.EDGE_TYPE_SOFT)
             color = config.SOFT_EDGE_COLOR if is_soft else config.HARD_EDGE_COLOR
             dash = config.SOFT_EDGE_DASH if is_soft else None
             width = (1.5 if is_soft else 2.0) * self.zoom
 
-            # Coordinates
             wx1, wy1 = self.get_draw_pos(u)
             wx2, wy2 = self.get_draw_pos(v)
             sx1, sy1 = self.to_screen(wx1, wy1)
@@ -382,7 +350,7 @@ class GraphBuilderApp:
             dist = math.hypot(dx, dy)
             if dist == 0: continue
             
-            # Stop line at node edge
+            # Snap line to the node boundary
             gap = r + 2
             tx = sx2 - (dx/dist)*gap
             ty = sy2 - (dy/dist)*gap
@@ -400,24 +368,22 @@ class GraphBuilderApp:
             ag_list = d.get('agent', ["Unassigned"])
             if not isinstance(ag_list, list): ag_list = [ag_list]
             
-            # Outline Style
             outline, width = "black", 1
             if n == self.selected_node:
                 outline, width = "blue", 3
             elif n == self.inspected_node:
                 outline, width = "orange", 3
             
-            # Shape Render
             if d.get('type') == "Function":
                 self._draw_rect_node(sx, sy, r, ag_list, outline, width)
             else:
                 self._draw_circle_node(sx, sy, r, ag_list, outline, width)
                 
-            # Label
             label_offset = r + (5 * self.zoom)
             self.canvas.create_text(sx, sy-label_offset, text=d.get('label',''), font=("Arial", font_size, "bold"), anchor="s")
 
     def _draw_rect_node(self, sx, sy, r, agents, outline, width):
+        """Renders Function nodes. Supports multi-agent assignment via vertical strips."""
         total_w = (r * 2)
         strip_w = total_w / len(agents)
         start_x = sx - r
@@ -431,6 +397,7 @@ class GraphBuilderApp:
         self.canvas.create_rectangle(sx-r, sy-r, sx+r, sy+r, fill="", outline=outline, width=width)
 
     def _draw_circle_node(self, sx, sy, r, agents, outline, width):
+        """Renders Resource nodes. Supports multi-agent assignment via radial wedges."""
         if len(agents) == 1:
             fill = self.agents.get(agents[0], "white")
             self.canvas.create_oval(sx-r, sy-r, sx+r, sy+r, fill=fill, outline=outline, width=width)
@@ -443,26 +410,19 @@ class GraphBuilderApp:
                 start_angle += extent
             self.canvas.create_oval(sx-r, sy-r, sx+r, sy+r, fill="", outline=outline, width=width)
 
-    # Dashboard Builders 
-
     def rebuild_dashboard(self):
-        # dictionary for the drag-and-drop geometry check
         self.agent_ui_frames = {}
 
-        # preserve scroll position
         try: scroll_pos = self.scroll_canvas.yview()[0]
         except: scroll_pos = 0.0
 
-        # clear existing widgets
         for w in self.inspector_frame.winfo_children(): w.destroy()
         for w in self.scrollable_content.winfo_children(): w.destroy()
 
-        # Build Sections
         self._build_stats_section()
-        self._build_agent_section() # This populates self.agent_ui_frames
+        self._build_agent_section()
         self._build_inspector_section()
         
-        # restore scroll
         self.scrollable_content.update_idletasks()
         self.scroll_canvas.configure(scrollregion=self.scroll_canvas.bbox("all"))
         self.scroll_canvas.yview_moveto(scroll_pos)
@@ -481,8 +441,7 @@ class GraphBuilderApp:
             if metric_key and metric_key in METRIC_DESCRIPTIONS:
                 CreateToolTip(lbl, METRIC_DESCRIPTIONS[metric_key])
 
-        # Standard Metrics
-        standard_metrics = [
+        metrics_config = [
             ("Density", "Density"), 
             ("Cyclomatic Number", "Cyclomatic Number"),
             ("Global Efficiency", "Global Efficiency"), 
@@ -494,18 +453,16 @@ class GraphBuilderApp:
             ("Collab. Ratio", "Collaboration Ratio")
         ]
         
-        for label, key in standard_metrics:
+        for label, key in metrics_config:
             val = calculate_metric(self.G, key)
             add_row(f"{label}: {val}", metric_key=key)
 
-        # Interactive Metrics
         add_row(f"Interdependence: {calculate_metric(self.G, 'Interdependence')}", "blue", 
                 lambda: self.trigger_visual_analytics("interdependence"), "Interdependence")
         
         add_row(f"Total Cycles: {calculate_metric(self.G, 'Total Cycles')}", "blue", 
                 lambda: self.trigger_visual_analytics("cycles"), "Total Cycles")
         
-        # Metric: Cycles List
         cycles = list(nx.simple_cycles(self.G))
         avg_len = sum(len(c) for c in cycles) / len(cycles) if cycles else 0.0
         add_row(f"Avg Cycle Length: {avg_len:.2f}", metric_key="Avg Cycle Length")
@@ -514,7 +471,6 @@ class GraphBuilderApp:
             items = [{'label': len(c), 'tooltip': f"Cycle {i+1}:\n" + " -> ".join([str(self.G.nodes[n].get('label', n)) for n in c])} for i, c in enumerate(cycles)]
             self._create_scrollable_list_ui(stats_frame, "", items, ["blue"], lambda idx: self.trigger_single_cycle_vis(idx)).pack(fill=tk.X, padx=5, pady=2)
 
-        # Metric: Modularity
         try:
             mod_val = calculate_metric(self.G, 'Modularity')
             add_row(f"Modularity: {mod_val}", "blue", lambda: self.trigger_visual_analytics("modularity"), "Modularity")
@@ -529,12 +485,10 @@ class GraphBuilderApp:
     def _build_agent_section(self):
         tk.Label(self.scrollable_content, text="Agent Overview", font=("Arial", 14, "bold"), bg="#f0f0f0").pack(fill=tk.X, pady=(15, 2))
         
-        # Top Controls
         ctrl = tk.Frame(self.scrollable_content, bg="#e0e0e0", bd=1, relief=tk.RAISED)
         ctrl.pack(fill=tk.X, padx=5, pady=5)
         tk.Button(ctrl, text="New Agent", command=self.create_agent, bg="white").pack(pady=5)
 
-        # 1. Group Nodes
         agent_map = {name: [] for name in self.agents}
         for n, d in self.G.nodes(data=True):
             ag_list = d.get('agent', ["Unassigned"])
@@ -544,47 +498,30 @@ class GraphBuilderApp:
                 if target not in agent_map: agent_map[target] = []
                 agent_map[target].append(n)
 
-        # 2. Build UI
         for name, color in self.agents.items():
             af = tk.Frame(self.scrollable_content, bg="#e0e0e0", bd=1, relief=tk.RAISED)
             af.pack(fill=tk.X, pady=2, padx=5)
             
-            # Save frame for drag-and-drop geometry check
             self.agent_ui_frames[name] = af
             
-            # Agent Header
             hf = tk.Frame(af, bg="#e0e0e0"); hf.pack(fill=tk.X)
             tk.Label(hf, bg=color, width=3).pack(side=tk.LEFT, padx=5, fill=tk.X)
             lbl = tk.Label(hf, text=name, bg="#e0e0e0", font=("Arial", 10, "bold"))
             lbl.pack(side=tk.LEFT, fill=tk.X)
             lbl.bind("<Button-1>", lambda e, a=name: self.edit_agent(a))
 
-            # Nodes List
             nodes = agent_map.get(name, [])
             if nodes:
                 for nid in nodes:
                     lbl_text = self.G.nodes[nid].get('label', str(nid))
-                    
-                    # --- THE FIX: Use Label instead of Button ---
-                    # We style it with relief and border to LOOK like a button
-                    btn = tk.Label(af, text=f" {lbl_text}", anchor="w", 
-                                   bg="white", 
-                                   font=("Arial", 11),       # Larger Font
-                                   bd=2, relief=tk.RAISED,   # 3D Button Look
-                                   padx=10, pady=5,          # Larger Click Area
-                                   cursor="hand2")           # Hand Cursor
-                    
+                    btn = tk.Label(af, text=f" {lbl_text}", anchor="w", bg="white", font=("Arial", 11), bd=2, relief=tk.RAISED, padx=10, pady=5, cursor="hand2")
                     btn.pack(fill=tk.X, padx=5, pady=2)
                     
-                    # Bindings
                     btn.bind("<Button-1>", lambda e, n=nid: self.on_sidebar_node_press(e, n))
                     btn.bind("<Button-3>", lambda e, n=nid: self.open_sharing_dialog(n))
                     btn.bind("<Button-2>", lambda e, n=nid: self.open_sharing_dialog(n))
-                    
-                    # Hover Effect (Optional polish)
                     btn.bind("<Enter>", lambda e, b=btn: b.config(bg="#f0f8ff"))
-                    btn.bind("<Leave>", lambda e, b=btn: b.config(bg="white"))
-
+                    btn.bind("<Leave>", lambda e, b=btn: b.config(white="white"))
             else:
                 tk.Label(af, text="(Empty)", bg="#e0e0e0", fg="#666", font=("Arial", 8, "italic")).pack(anchor="w", padx=10)
 
@@ -596,10 +533,8 @@ class GraphBuilderApp:
         d = self.G.nodes[self.inspected_node]
         tk.Label(self.inspector_frame, text="SELECTED NODE INSPECTOR", bg="#fff8e1", font=("Arial", 10, "bold")).pack(pady=2)
 
-        # Details
         tk.Label(self.inspector_frame, text=f"ID: {self.inspected_node} | Lbl: {d.get('label')}", bg="#fff8e1", font=("Arial", 9, "bold")).pack(anchor="w", padx=5)
 
-        # Layer Control
         r2 = tk.Frame(self.inspector_frame, bg="#fff8e1"); r2.pack(fill=tk.X, padx=5, pady=2)
         tk.Label(r2, text="Layer:", bg="#fff8e1").pack(side=tk.LEFT)
         
@@ -614,7 +549,6 @@ class GraphBuilderApp:
             self.redraw()
         layer_box.bind("<<ComboboxSelected>>", on_layer_change)
 
-        # Metrics
         def safe_metric(func, **kwargs):
             try: return f"{func(self.G, **kwargs)[self.inspected_node]:.3f}"
             except: return "0.000"
@@ -668,20 +602,15 @@ class GraphBuilderApp:
         
         inner_frame.update_idletasks()
         h_canvas.config(scrollregion=h_canvas.bbox("all"))
-        
         h_canvas.bind("<MouseWheel>", lambda e: h_canvas.xview_scroll(int(-1*(e.delta/120)), "units"))
         return container
-
-    # Mode & Toolbar Logic 
 
     def build_toolbar(self, parent):
         r1 = tk.Frame(parent); r1.pack(fill=tk.X, pady=2)
         
-        # History
         tk.Button(r1, text="↶", command=self.undo, width=2).pack(side=tk.LEFT, padx=1)
         tk.Button(r1, text="↷", command=self.redo, width=2).pack(side=tk.LEFT, padx=1)
         
-        # View Filters
         tk.Label(r1, text=" | Edges: ", fg="#555", font=("Arial", 15)).pack(side=tk.LEFT)
         for name, mode in [("All", "ALL"), ("Required", config.EDGE_TYPE_HARD), ("Assistive", config.EDGE_TYPE_SOFT)]:
              tk.Button(r1, text=name, command=lambda m=mode: self.set_edge_view(m), font=("Arial", 12)).pack(side=tk.LEFT, padx=1)
@@ -689,11 +618,9 @@ class GraphBuilderApp:
         self.view_btn = tk.Button(r1, text="👁 View: Free", command=self.toggle_view, bg="#e1bee7", font=("Arial", 12, "bold"))
         self.view_btn.pack(side=tk.LEFT, padx=10)
         
-        # Modes
         for k, txt in [("SELECT", "➤ Select"), ("ADD_FUNC", "Add Func"), ("ADD_RES", "Add Res"), ("ADD_EDGE", "Connect"), ("DELETE", "Delete")]:
             self.create_mode_button(r1, k, txt)
         
-        # Row 2: File Ops
         r2 = tk.Frame(parent); r2.pack(fill=tk.X, pady=2)
         tk.Label(r2, text="| RAM:", fg="#888").pack(side=tk.LEFT, padx=5)
         tk.Button(r2, text="Store Architecture", command=self.save_architecture_internal).pack(side=tk.LEFT, padx=2)
@@ -734,8 +661,6 @@ class GraphBuilderApp:
             btn.config(bg="#87CEFA" if is_active else ("#ffcccc" if mode_key == "DELETE" else "#f0f0f0"), 
                        relief=tk.SUNKEN if is_active else tk.RAISED)
 
-    # Node/Agent Helpers
-
     def assign_agent_logic(self, node_id, agent_name):
         current_data = self.G.nodes[node_id].get('agent', ["Unassigned"])
         if not isinstance(current_data, list): current_data = [current_data]
@@ -752,13 +677,11 @@ class GraphBuilderApp:
         self.G.nodes[node_id]['agent'] = current_data
 
     def on_double_click(self, event):
-        # Check Node
         node = self._get_node_at(event.x, event.y)
         if node is not None:
             self.open_node_editor(node)
             return
 
-        # Check Edge
         edge = self.find_edge_at(event.x, event.y)
         if edge:
             u, v = edge
@@ -823,11 +746,10 @@ class GraphBuilderApp:
                 del self.agents[agent_name]
                 self.agents[new_name] = new_color
                 
-                # Update nodes
                 for n, d in self.G.nodes(data=True): 
                     ag = d.get('agent')
-                    if ag == agent_name: self.G.nodes[n]['agent'] = new_name # handle simple string
-                    elif isinstance(ag, list) and agent_name in ag: # handle list
+                    if ag == agent_name: self.G.nodes[n]['agent'] = new_name
+                    elif isinstance(ag, list) and agent_name in ag:
                         idx = ag.index(agent_name)
                         ag[idx] = new_name
                 
@@ -849,8 +771,6 @@ class GraphBuilderApp:
 
         tk.Button(win, text="Save", command=save, bg="#e1bee7").pack(pady=15, fill=tk.X, padx=20)
         tk.Button(win, text="Delete", command=delete, bg="#ffcccc").pack(pady=5, fill=tk.X, padx=20)
-
-    # History & IO 
 
     def save_state(self, state=None):
         snapshot = state if state else self.G.copy()
@@ -882,10 +802,10 @@ class GraphBuilderApp:
             messagebox.showerror("Error", str(e))
     
     def initiate_save_json(self):
+        """Serializes current graph state into JSAT-compatible JSON format."""
         fp = filedialog.asksaveasfilename(defaultextension=".json")
         if not fp: return
 
-        # Prepare Data Structure
         nodes_dict = {}
         agent_authorities = {name: [] for name in self.agents}
         
@@ -926,7 +846,6 @@ class GraphBuilderApp:
             self.G.clear()
             self.agents = config.DEFAULT_AGENTS.copy()
             
-            # 1. Load Agents
             label_to_agents = {}
             for ag_name, ag_data in data.get("Agents", {}).items():
                 if ag_name not in self.agents: 
@@ -934,14 +853,11 @@ class GraphBuilderApp:
                 for node_lbl in ag_data.get("Authority", []):
                     label_to_agents.setdefault(node_lbl, []).append(ag_name)
             
-            # 2. Load Nodes
             label_to_id = {}
             layer_counters = {l: 100 for l in config.LAYER_ORDER}
             
             for i, (lbl, props) in enumerate(data.get("Nodes", {}).items()):
                 n_type, n_layer = self._parse_node_attributes(props.get("Type", ""))
-                
-                # Position logic
                 pos_y = config.JSAT_LAYERS.get(n_layer, 550)
                 pos_x = layer_counters.get(n_layer, 100)
                 layer_counters[n_layer] = pos_x + 120
@@ -951,7 +867,6 @@ class GraphBuilderApp:
                                 label=props.get("UserData", lbl), agent=assigned)
                 label_to_id[lbl] = i
 
-            # 3. Load Edges
             for e in data.get("Edges", []):
                 u, v = label_to_id.get(e["Source"]), label_to_id.get(e["Target"])
                 if u is not None and v is not None:
@@ -962,7 +877,7 @@ class GraphBuilderApp:
             messagebox.showerror("Error", f"Failed to load: {e}")
 
     def _parse_node_attributes(self, combined_string):
-        """Extracts (Type, Layer) from the specific JSON string format."""
+        """Extracts (Type, Layer) from the legacy JSON combined string format."""
         n_type = "Resource"
         layer = "Base Environment"
         
@@ -980,8 +895,6 @@ class GraphBuilderApp:
                 layer = known
                 break
         return n_type, layer
-
-    # Comparative Analytics 
 
     def save_architecture_internal(self):
         n = simpledialog.askstring("Name", "Name:")
@@ -1008,15 +921,14 @@ class GraphBuilderApp:
         tk.Button(w, text="Go", command=go).pack()
 
     def launch_compare_window(self, graph_list):
+        """Creates a multi-graph comparative analytics dashboard."""
         w = Toplevel(self.root)
         w.title("Comparative Analytics")
         w.geometry("1400x900")
         
-        # UI Structure
         top_frame = tk.Frame(w, bd=2, relief=tk.RAISED)
         top_frame.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
         
-        # Header
         h_row = tk.Frame(top_frame)
         h_row.pack(fill=tk.X, pady=5)
         tk.Label(h_row, text="Comparative Analytics", font=("Arial", 16, "bold")).pack(side=tk.LEFT, padx=10)
@@ -1032,7 +944,6 @@ class GraphBuilderApp:
 
         panels = []
 
-        # Helper: Highlight Trigger
         def set_highlights(metric_name):
             for _, panel in panels:
                 if metric_name == "Total Cycles":
@@ -1044,7 +955,6 @@ class GraphBuilderApp:
                 else:
                     panel.set_highlights([])
 
-        # Helper: Refresh Grid
         def refresh_grid():
             for child in top_frame.winfo_children(): 
                 if child != h_row: child.destroy()
@@ -1052,7 +962,6 @@ class GraphBuilderApp:
             grid_f = tk.Frame(top_frame)
             grid_f.pack(fill=tk.X, padx=10)
             
-            # Headers
             tk.Label(grid_f, text="Metric", font=("Arial", 12, "bold"), width=18, relief="solid", bd=1, bg="#e0e0e0").grid(row=0, column=0, sticky="nsew")
             for i, (name, _) in enumerate(graph_list):
                 tk.Label(grid_f, text=name, font=("Arial", 12, "bold"), width=15, relief="solid", bd=1, bg="#e0e0e0").grid(row=0, column=i+1, sticky="nsew")
@@ -1060,54 +969,45 @@ class GraphBuilderApp:
             metrics = ["Nodes", "Edges", "Density", "Cyclomatic Number", "Total Cycles", "Avg Cycle Length", "Interdependence", "Modularity", "Global Efficiency"]
             
             for r, m in enumerate(metrics):
-                # Row Header
                 lbl = tk.Label(grid_f, text=m, font=("Arial", 12), relief="solid", bd=1, anchor="w", padx=5)
                 lbl.grid(row=r+1, column=0, sticky="nsew")
                 if m in ["Total Cycles", "Interdependence", "Modularity"]:
                     lbl.config(fg="blue", cursor="hand2")
                     lbl.bind("<Button-1>", lambda e, name=m: set_highlights(name))
 
-                # Values
                 for c, (_, g) in enumerate(graph_list):
                     val = calculate_metric(g, m)
                     tk.Label(grid_f, text=str(val), font=("Arial", 12), relief="solid", bd=1).grid(row=r+1, column=c+1, sticky="nsew")
 
-        # --- THE FIX: Node Comparison Callback ---
         def on_node_clicked(node_label):
-            # Clear previous inspector contents
             for child in inspector_frame.winfo_children():
                 child.destroy()
                 
-            tk.Label(inspector_frame, text=f"Node Inspector: '{node_label}'", font=("Arial", 12, "bold"), bg="#f0f0f0").pack(pady=5, anchor="w", padx=10)
+            tk.Label(inspector_frame, text=f"Node Inspector: '{node_label}'", font=("Arial", 16, "bold"), bg="#f0f0f0").pack(pady=5, anchor="w", padx=10)
             
             table_f = tk.Frame(inspector_frame, bg="white", bd=1, relief="solid")
             table_f.pack(fill=tk.X, padx=10, pady=5)
             
-            # Table Headers
-            tk.Label(table_f, text="Node Metric", font=("Arial", 10, "bold"), relief="solid", bd=1, bg="#e0e0e0", width=18).grid(row=0, column=0, sticky="nsew")
-            for i, (g_name, _) in enumerate(graph_list):
-                tk.Label(table_f, text=g_name, font=("Arial", 10, "bold"), relief="solid", bd=1, bg="#e0e0e0", width=15).grid(row=0, column=i+1, sticky="nsew")
-            
             node_metrics = ["In-Degree", "Out-Degree", "Degree Centrality", "Betweenness", "Eigenvector"]
-            for r, m in enumerate(node_metrics):
-                tk.Label(table_f, text=m, font=("Arial", 10), relief="solid", bd=1, anchor="w", padx=5).grid(row=r+1, column=0, sticky="nsew")
             
-            # Populate Data
-            for col, (g_name, g) in enumerate(graph_list):
-                # 1. Find the node ID by its string label
+            tk.Label(table_f, text="Architecture", font=("Arial", 14, "bold"), relief="solid", bd=1, bg="#e0e0e0", width=15).grid(row=0, column=0, sticky="nsew")
+            for col, m in enumerate(node_metrics):
+                tk.Label(table_f, text=m, font=("Arial", 14, "bold"), relief="solid", bd=1, bg="#e0e0e0", width=16).grid(row=0, column=col+1, sticky="nsew")
+            
+            for row, (g_name, g) in enumerate(graph_list):
+                tk.Label(table_f, text=g_name, font=("Arial", 13, "bold"), relief="solid", bd=1, anchor="w", padx=5).grid(row=row+1, column=0, sticky="nsew")
+                
                 target_id = None
                 for n, d in g.nodes(data=True):
                     if d.get('label') == node_label:
                         target_id = n
                         break
                 
-                # 2. If node doesn't exist in this graph, fill with dashes
                 if target_id is None:
-                    for r in range(len(node_metrics)):
-                        tk.Label(table_f, text="-", font=("Arial", 10), relief="solid", bd=1).grid(row=r+1, column=col+1, sticky="nsew")
+                    for col in range(len(node_metrics)):
+                        tk.Label(table_f, text="-", font=("Arial", 13), relief="solid", bd=1).grid(row=row+1, column=col+1, sticky="nsew")
                     continue
                 
-                # 3. Calculate metrics safely
                 def safe_m(func, **kwargs):
                     try: return f"{func(g, **kwargs)[target_id]:.3f}"
                     except: return "0.000"
@@ -1120,19 +1020,14 @@ class GraphBuilderApp:
                     safe_m(nx.eigenvector_centrality, max_iter=100, tol=1e-04)
                 ]
                 
-                for r, val in enumerate(vals):
-                    tk.Label(table_f, text=val, font=("Arial", 10), relief="solid", bd=1).grid(row=r+1, column=col+1, sticky="nsew")
-        # -----------------------------------------
+                for col, val in enumerate(vals):
+                    tk.Label(table_f, text=val, font=("Arial", 13), relief="solid", bd=1).grid(row=row+1, column=col+1, sticky="nsew")
 
-        # Initialize Panels
         for name, g in graph_list:
-            # We now pass `on_node_clicked` instead of `lambda x: None`
             p = InteractiveComparisonPanel(graph_container, g, name, config.NODE_RADIUS, self.agents, None, on_node_clicked)
             panels.append((name, p))
             
         refresh_grid()
-
-    # Utils 
     
     def get_layer_from_y(self, y):
         closest, min_dist = None, 9999
@@ -1143,18 +1038,11 @@ class GraphBuilderApp:
         return closest
 
     def on_sidebar_node_press(self, event, node_id):
-        # 1. Set Drag Data
         self.sidebar_drag_data = node_id
-        
-        # 2. Manually Select the Node (Update internal state)
         self.selected_node = node_id
         self.inspected_node = node_id
-        
-        # 3. Redraw the CANVAS ONLY (Blue outline)
-        # We pass False here so the sidebar buttons are NOT destroyed/recreated
         self.redraw(rebuild_dash=False)
         
-        # 4. Setup Global Release (Start the Drag)
         self.root.config(cursor="hand2")
         self.root.bind("<ButtonRelease-1>", self.on_sidebar_node_release)
 
@@ -1166,7 +1054,6 @@ class GraphBuilderApp:
             mx, my = event.x_root, event.y_root
             target_agent = None
 
-            # Geometry Check
             for name, frame in self.agent_ui_frames.items():
                 fx, fy = frame.winfo_rootx(), frame.winfo_rooty()
                 fw, fh = frame.winfo_width(), frame.winfo_height()
@@ -1175,17 +1062,16 @@ class GraphBuilderApp:
                     target_agent = name
                     break
             
-            # Apply Move
             if target_agent:
                 self.save_state()
                 self.G.nodes[self.sidebar_drag_data]['agent'] = [target_agent]
                 
             self.sidebar_drag_data = None
 
-        # NOW we allow the dashboard to rebuild to show the changes
         self.redraw(rebuild_dash=True)
 
     def find_edge_at(self, x, y):
+        """Utility for hit-testing edges for selection or deletion."""
         threshold = 8 
         for u, v in self.G.edges():
             wx1, wy1 = self.get_draw_pos(u)
@@ -1193,9 +1079,9 @@ class GraphBuilderApp:
             sx1, sy1 = self.to_screen(wx1, wy1)
             sx2, sy2 = self.to_screen(wx2, wy2)
             
-            # Distance from point to segment
             dx, dy = sx2 - sx1, sy2 - sy1
-            if dx == 0 and dy == 0: dist = math.hypot(x - sx1, y - sy1)
+            if dx == 0 and dy == 0: 
+                dist = math.hypot(x - sx1, y - sy1)
             else:
                 t = ((x - sx1) * dx + (y - sy1) * dy) / (dx*dx + dy*dy)
                 t = max(0, min(1, t))
@@ -1242,6 +1128,7 @@ class GraphBuilderApp:
             self.open_sharing_dialog(node)
 
     def open_sharing_dialog(self, node_id):
+        """Allows for defining Joint Activity by sharing node authority between multiple agents."""
         win = Toplevel(self.root)
         win.title("Share Authority")
         win.geometry("300x400")
@@ -1252,33 +1139,24 @@ class GraphBuilderApp:
         frame = tk.Frame(win)
         frame.pack(fill=tk.BOTH, expand=True, padx=10)
 
-        # get current agents assigned to this node
         current_agents = self.G.nodes[node_id].get('agent', ["Unassigned"])
         if not isinstance(current_agents, list): current_agents = [current_agents]
 
-        # hold True/False variables for each agent
         check_vars = {}
-
         for agent_name in self.agents.keys():
             var = tk.BooleanVar(value=(agent_name in current_agents))
             check_vars[agent_name] = var
-            
             cb = tk.Checkbutton(frame, text=agent_name, variable=var, anchor="w", font=("Arial", 10))
             cb.pack(fill=tk.X, pady=2)
 
         def save_shares():
-            # colect all checked agents
             selected = [name for name, var in check_vars.items() if var.get()]
-            
-            # fallback if none selected
             if not selected: selected = ["Unassigned"]
-
             self.save_state()
             self.G.nodes[node_id]['agent'] = selected
             self.redraw()
             win.destroy()
 
-        # footer buttons
         btn_frame = tk.Frame(win, pady=10)
         btn_frame.pack(fill=tk.X)
         tk.Button(btn_frame, text="Apply Shares", command=save_shares, bg="#90ee90", height=2).pack(fill=tk.X, padx=10)

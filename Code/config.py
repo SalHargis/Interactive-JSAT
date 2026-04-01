@@ -1,27 +1,28 @@
 # config.py
+# Core configuration and visual constants for the JSAT environment
 
-# Graph Settings
+# --- Graph Geometry & History ---
 NODE_RADIUS = 20
 HISTORY_LIMIT = 40
 
-# Default Agents
+# --- Agent Defaults ---
 DEFAULT_AGENTS = {"Unassigned": "white"}
 DEFAULT_CURRENT_AGENT = "Unassigned"
 
-# View Modes 
+# --- Viewport Modes ---
 VIEW_MODE_FREE = "FREE"
 VIEW_MODE_JSAT = "JSAT"
 
-# JSAT Layer Definitions
-# Defines y-coordinate for each layer
+# --- JSAT Layer Definitions ---
+# Y-coordinates define the horizontal "shelves" in JSAT view mode
 JSAT_LAYERS = {
-    "Synchrony": 100,               # Matches JSON "SynchronyFunction"
+    "Synchrony": 100,
     "Coordination Grounding": 250,
     "Distributed Work": 400,
     "Base Environment": 550
 }
 
-# Defines order in which they appear (Top to Bottom)
+# Vertical ordering (Top to Bottom)
 LAYER_ORDER = [
     "Synchrony",                    
     "Coordination Grounding", 
@@ -29,13 +30,12 @@ LAYER_ORDER = [
     "Base Environment"
 ]
 
-# Edge Types
+# --- Edge Logic & Styling ---
 EDGE_TYPE_HARD = "hard"
 EDGE_TYPE_SOFT = "soft"
 
-# Visual Styles
 HARD_EDGE_COLOR = "black"
-SOFT_EDGE_COLOR = "#999999" # grey
+SOFT_EDGE_COLOR = "#999999"  # Grey for supportive links
 HARD_EDGE_WIDTH = 2
 SOFT_EDGE_WIDTH = 2
-SOFT_EDGE_DASH = (4, 4) # Dashed line pattern
+SOFT_EDGE_DASH = (4, 4)      # Visual distinction for soft constraints

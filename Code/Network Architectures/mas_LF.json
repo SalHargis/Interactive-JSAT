@@ -1,0 +1,48 @@
+{
+    "GraphData": {
+        "Nodes": {
+            "AerialScouting": { "Type": "DistributedWorkFunction", "UserData": "AerialScouting" },
+            "PathPlanning": { "Type": "DistributedWorkFunction", "UserData": "PathPlanning" },
+            "EvaluatePath": { "Type": "SynchronyFunction", "UserData": "EvaluatePath" },
+            "ExecuteMovement": { "Type": "DistributedWorkFunction", "UserData": "ExecuteMovement" },
+            "UpdateConstraints": { "Type": "SynchronyFunction", "UserData": "UpdateConstraints" },
+            
+            "Search Area": { "Type": "BaseEnvironmentResource", "UserData": "Search Area" },
+            "Hazard Data": { "Type": "BaseEnvironmentResource", "UserData": "Hazard Data" },
+            "Mission Constraints": { "Type": "CoordinationGroundingResource", "UserData": "Mission Constraints" },
+            "Proposed Path": { "Type": "CoordinationGroundingResource", "UserData": "Proposed Path" },
+            "Verified Path": { "Type": "CoordinationGroundingResource", "UserData": "Verified Path" },
+            "Robot Location": { "Type": "BaseEnvironmentResource", "UserData": "Robot Location" }
+        },
+        "Edges": [
+            { "Source": "Search Area", "Target": "AerialScouting", "UserData": { "QOS": "" } },
+            { "Source": "AerialScouting", "Target": "Hazard Data", "UserData": { "QOS": "" } },
+            { "Source": "Hazard Data", "Target": "PathPlanning", "UserData": { "QOS": "" } },
+            { "Source": "Mission Constraints", "Target": "PathPlanning", "UserData": { "QOS": "" } },
+            { "Source": "PathPlanning", "Target": "Proposed Path", "UserData": { "QOS": "" } },
+            
+            { "Source": "Proposed Path", "Target": "ExecuteMovement", "UserData": { "QOS": "" } }, 
+            
+            { "Source": "Proposed Path", "Target": "EvaluatePath", "UserData": { "QOS": "" } },
+            { "Source": "EvaluatePath", "Target": "Verified Path", "UserData": { "QOS": "" } },
+            { "Source": "Verified Path", "Target": "PathPlanning", "UserData": { "QOS": "" } },
+            
+            { "Source": "ExecuteMovement", "Target": "Robot Location", "UserData": { "QOS": "" } },
+            { "Source": "Robot Location", "Target": "UpdateConstraints", "UserData": { "QOS": "" } },
+            { "Source": "UpdateConstraints", "Target": "Mission Constraints", "UserData": { "QOS": "" } },
+            { "Source": "UpdateConstraints", "Target": "Search Area", "UserData": { "QOS": "" } },
+            { "Source": "Mission Constraints", "Target": "AerialScouting", "UserData": { "QOS": "" } }
+        ],
+        "Agents": {
+            "Aerial Recon Drone": {
+                "Authority": [ "AerialScouting", "Search Area", "Hazard Data" ]
+            },
+            "Ground Rescue Robot": {
+                "Authority": [ "PathPlanning", "ExecuteMovement", "Proposed Path", "Robot Location" ]
+            },
+            "Human Mission Commander": {
+                "Authority": [ "EvaluatePath", "UpdateConstraints", "Verified Path", "Mission Constraints" ]
+            }
+        }
+    }
+}

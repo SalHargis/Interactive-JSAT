@@ -1,0 +1,126 @@
+{
+    "GraphData": {
+        "Nodes": {
+            "SelectPointsOfInterest": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "Human identifies targets from video/imagery"
+            },
+            "MapNavigationPlanning": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "Robot defines search sectors"
+            },
+            "RobotPathPlanning": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "Robot computes trajectory"
+            },
+            "ImageryCapture": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "Robot captures raw visual data"
+            },
+            "LocationAttAssessment": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "Robot calculates self-pose"
+            },
+            "ObstacleLocalization": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "Robot maps local hazards"
+            },
+            "Re-Evaluate Goal": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "Human modifies mission parameters"
+            },
+            "EvaluatePlannedPath": {
+                "Type": "SynchronyFunction",
+                "UserData": "Cross-check: Human validates path"
+            },
+            "PathRedirecting": {
+                "Type": "SynchronyFunction",
+                "UserData": "Intervene: Human overrides path"
+            },
+            "MonitoringVideo": {
+                "Type": "SynchronyFunction",
+                "UserData": "Monitor: Human reviews live feed"
+            },
+            "Planned Path": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Planned Path"
+            },
+            "Captured Imagery": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Captured Imagery"
+            },
+            "Robot Location": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Robot Location"
+            },
+            "Obstacle Locations": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Obstacle Locations"
+            },
+            "Points of Interest": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Points of Interest"
+            },
+            "Search Area": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Search Area"
+            },
+            "Goal": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Goal"
+            },
+            "Confirmed Path": {
+                "Type": "CoordinationGroundingResource",
+                "UserData": "Verified route"
+            },
+            "New Path": {
+                "Type": "CoordinationGroundingResource",
+                "UserData": "Override route"
+            },
+            "Monitored Video": {
+                "Type": "CoordinationGroundingResource",
+                "UserData": "Shared visual context"
+            }
+        },
+        "Edges": [
+            { "Source": "ImageryCapture", "Target": "Captured Imagery", "UserData": { "QOS": "Output" } },
+            { "Source": "Captured Imagery", "Target": "MonitoringVideo", "UserData": { "QOS": "Input for oversight" } },
+            { "Source": "MonitoringVideo", "Target": "Monitored Video", "UserData": { "QOS": "Output" } },
+            { "Source": "Monitored Video", "Target": "SelectPointsOfInterest", "UserData": { "QOS": "Input for target ID" } },
+            { "Source": "SelectPointsOfInterest", "Target": "Points of Interest", "UserData": { "QOS": "Output" } },
+            { "Source": "Points of Interest", "Target": "MapNavigationPlanning", "UserData": { "QOS": "Input for search logic" } },
+            { "Source": "MapNavigationPlanning", "Target": "Search Area", "UserData": { "QOS": "Output" } },
+            { "Source": "LocationAttAssessment", "Target": "Robot Location", "UserData": { "QOS": "Output" } },
+            { "Source": "ObstacleLocalization", "Target": "Obstacle Locations", "UserData": { "QOS": "Output" } },
+            { "Source": "Robot Location", "Target": "RobotPathPlanning", "UserData": { "QOS": "Required for start point" } },
+            { "Source": "Obstacle Locations", "Target": "RobotPathPlanning", "UserData": { "QOS": "Required for avoidance" } },
+            { "Source": "Search Area", "Target": "RobotPathPlanning", "UserData": { "QOS": "Required for bounds" } },
+            { "Source": "Goal", "Target": "RobotPathPlanning", "UserData": { "QOS": "Required for destination" } },
+            { "Source": "RobotPathPlanning", "Target": "Planned Path", "UserData": { "QOS": "Output" } },
+            { "Source": "Planned Path", "Target": "EvaluatePlannedPath", "UserData": { "QOS": "Input for verification" } },
+            { "Source": "EvaluatePlannedPath", "Target": "Confirmed Path", "UserData": { "QOS": "Output" } },
+            { "Source": "Confirmed Path", "Target": "PathRedirecting", "UserData": { "QOS": "Input to determine if redirect is needed" } },
+            { "Source": "Obstacle Locations", "Target": "PathRedirecting", "UserData": { "QOS": "Input to justify redirect" } },
+            { "Source": "PathRedirecting", "Target": "New Path", "UserData": { "QOS": "Output" } },
+            { "Source": "New Path", "Target": "RobotPathPlanning", "UserData": { "QOS": "Recursive input for re-planning" } },
+            { "Source": "Captured Imagery", "Target": "Re-Evaluate Goal", "UserData": { "QOS": "Input for decision making" } },
+            { "Source": "Re-Evaluate Goal", "Target": "Goal", "UserData": { "QOS": "Output" } }
+        ],
+        "Agents": {
+            "Human Team": {
+                "Authority": [
+                    "SelectPointsOfInterest", "Re-Evaluate Goal", "EvaluatePlannedPath", 
+                    "PathRedirecting", "MonitoringVideo", "Points of Interest", 
+                    "Goal", "Confirmed Path", "New Path", "Monitored Video"
+                ]
+            },
+            "Autonomous Robot": {
+                "Authority": [
+                    "MapNavigationPlanning", "RobotPathPlanning", "ImageryCapture", 
+                    "LocationAttAssessment", "ObstacleLocalization", "Planned Path", 
+                    "Captured Imagery", "Robot Location", "Obstacle Locations", "Search Area"
+                ]
+            }
+        }
+    }
+}

@@ -1,0 +1,284 @@
+{
+    "GraphData": {
+        "Nodes": {
+            "LidarScanning": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "LidarScanning"
+            },
+            "CameraImaging": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "CameraImaging"
+            },
+            "GPS_Intertial_Tracking": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "GPS_Intertial_Tracking"
+            },
+            "ObjectDetectionAndClassification": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "ObjectDetectionAndClassification"
+            },
+            "PoseEstimation": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "PoseEstimation"
+            },
+            "TrajectoryGeneration": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "TrajectoryGeneration"
+            },
+            "Monitoring": {
+                "Type": "SynchronyFunction",
+                "UserData": "Monitoring"
+            },
+            "RemoteTeleopOverride": {
+                "Type": "SynchronyFunction",
+                "UserData": "RemoteTeleopOverride"
+            },
+            "RawPointCloud": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "RawPointCloud"
+            },
+            "VideoFrames": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "VideoFrames"
+            },
+            "OdometryData": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "OdometryData"
+            },
+            "SemanticOccupancyMap": {
+                "Type": "CoordinationGroundingResource",
+                "UserData": "SemanticOccupancyMap"
+            },
+            "LocalCoordinatePose": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "LocalCoordinatePose"
+            },
+            "VehicleTrajectory": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "VehicleTrajectory"
+            },
+            "MonitoredPath": {
+                "Type": "CoordinationGroundingResource",
+                "UserData": "MonitoredPath"
+            },
+            "ActuationCommands": {
+                "Type": "CoordinationGroundingResource",
+                "UserData": "ActuationCommands"
+            },
+            "WaypointMarking": {
+                "Type": "SynchronyFunction",
+                "UserData": "WaypointMarking"
+            },
+            "MapDataVisualization": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "MapDataVisualization"
+            },
+            "Trajectory Waypoints": {
+                "Type": "CoordinationGroundingResource",
+                "UserData": "Trajectory Waypoints"
+            }
+        },
+        "Edges": [
+            {
+                "Source": "LidarScanning",
+                "Target": "RawPointCloud",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "CameraImaging",
+                "Target": "VideoFrames",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "GPS_Intertial_Tracking",
+                "Target": "OdometryData",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "ObjectDetectionAndClassification",
+                "Target": "SemanticOccupancyMap",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "PoseEstimation",
+                "Target": "LocalCoordinatePose",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "TrajectoryGeneration",
+                "Target": "VehicleTrajectory",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "Monitoring",
+                "Target": "MonitoredPath",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "RemoteTeleopOverride",
+                "Target": "ActuationCommands",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "RawPointCloud",
+                "Target": "ObjectDetectionAndClassification",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "RawPointCloud",
+                "Target": "PoseEstimation",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "VideoFrames",
+                "Target": "ObjectDetectionAndClassification",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "VideoFrames",
+                "Target": "MapDataVisualization",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "VideoFrames",
+                "Target": "TrajectoryGeneration",
+                "UserData": {
+                    "type": "soft"
+                }
+            },
+            {
+                "Source": "OdometryData",
+                "Target": "PoseEstimation",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "OdometryData",
+                "Target": "MapDataVisualization",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "SemanticOccupancyMap",
+                "Target": "TrajectoryGeneration",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "LocalCoordinatePose",
+                "Target": "TrajectoryGeneration",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "LocalCoordinatePose",
+                "Target": "MapDataVisualization",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "VehicleTrajectory",
+                "Target": "Monitoring",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "MonitoredPath",
+                "Target": "RemoteTeleopOverride",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "MonitoredPath",
+                "Target": "WaypointMarking",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "ActuationCommands",
+                "Target": "TrajectoryGeneration",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "WaypointMarking",
+                "Target": "Trajectory Waypoints",
+                "UserData": {
+                    "type": "hard"
+                }
+            },
+            {
+                "Source": "Trajectory Waypoints",
+                "Target": "TrajectoryGeneration",
+                "UserData": {
+                    "type": "hard"
+                }
+            }
+        ],
+        "Agents": {
+            "Unassigned": {
+                "Authority": []
+            },
+            "Autonomous Vehicle (On-Board)": {
+                "Authority": [
+                    "LidarScanning",
+                    "CameraImaging",
+                    "GPS_Intertial_Tracking",
+                    "ObjectDetectionAndClassification",
+                    "PoseEstimation",
+                    "TrajectoryGeneration",
+                    "RawPointCloud",
+                    "VideoFrames",
+                    "OdometryData",
+                    "SemanticOccupancyMap",
+                    "LocalCoordinatePose",
+                    "VehicleTrajectory",
+                    "MapDataVisualization"
+                ]
+            },
+            "Remote Operations Team (Human)": {
+                "Authority": [
+                    "Monitoring",
+                    "RemoteTeleopOverride",
+                    "MonitoredPath",
+                    "ActuationCommands",
+                    "WaypointMarking",
+                    "Trajectory Waypoints"
+                ]
+            }
+        }
+    }
+}

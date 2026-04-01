@@ -1,0 +1,313 @@
+{
+    "GraphData": {
+        "Nodes": {
+            "Repercussion Anticipating": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "Repercussion Anticipating"
+            },
+            "Damage Assessing": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "Damage Assessing"
+            },
+            "Problem diagnosis": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Problem diagnosis"
+            },
+            "Problem Diagnosing": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "Problem Diagnosing"
+            },
+            "Damage assessment": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Damage assessment"
+            },
+            "Sensor information": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Sensor information"
+            },
+            "Monitoring Effectiveness of Intervention": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "Monitoring Effectiveness of Intervention"
+            },
+            "Power signal": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Power signal"
+            },
+            "Temperature signal": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Temperature signal"
+            },
+            "Pressure signal": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Pressure signal"
+            },
+            "Anomaly Recognizing": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "Anomaly Recognizing"
+            },
+            "Anticipated repercussions": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Anticipated repercussions"
+            },
+            "Anomaly condition": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Anomaly condition"
+            },
+            "Ameliorating": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "Ameliorating"
+            },
+            "Plan Implementing": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "Plan Implementing"
+            },
+            "Amelioration plan": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Amelioration plan"
+            },
+            "Status of intervention effectiveness": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "Status of intervention effectiveness"
+            }
+        },
+        "Edges": [
+            {
+                "Source": "Damage Assessing",
+                "Target": "Damage assessment",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Problem Diagnosing",
+                "Target": "Problem diagnosis",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Damage assessment",
+                "Target": "Repercussion Anticipating",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Problem diagnosis",
+                "Target": "Damage Assessing",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Sensor information",
+                "Target": "Problem Diagnosing",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Power signal",
+                "Target": "Anomaly Recognizing",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Temperature signal",
+                "Target": "Anomaly Recognizing",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Pressure signal",
+                "Target": "Anomaly Recognizing",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Temperature signal",
+                "Target": "Monitoring Effectiveness of Intervention",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Repercussion Anticipating",
+                "Target": "Anticipated repercussions",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Anticipated repercussions",
+                "Target": "Monitoring Effectiveness of Intervention",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Anomaly Recognizing",
+                "Target": "Anomaly condition",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Anomaly condition",
+                "Target": "Problem Diagnosing",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Pressure signal",
+                "Target": "Monitoring Effectiveness of Intervention",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Power signal",
+                "Target": "Monitoring Effectiveness of Intervention",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Sensor information",
+                "Target": "Monitoring Effectiveness of Intervention",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Ameliorating",
+                "Target": "Amelioration plan",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Amelioration plan",
+                "Target": "Plan Implementing",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Status of intervention effectiveness",
+                "Target": "Plan Implementing",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Monitoring Effectiveness of Intervention",
+                "Target": "Status of intervention effectiveness",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Problem diagnosis",
+                "Target": "Plan Implementing",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Problem diagnosis",
+                "Target": "Ameliorating",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Damage assessment",
+                "Target": "Ameliorating",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            },
+            {
+                "Source": "Anticipated repercussions",
+                "Target": "Ameliorating",
+                "UserData": {
+                    "QOS": "",
+                    "type": "HARD"
+                }
+            }
+        ],
+        "Agents": {
+            "Astronaut": {
+                "Authority": [
+                    "Monitoring Effectiveness of Intervention",
+                    "Ameliorating",
+                    "Plan Implementing",
+                    "Amelioration plan",
+                    "Status of intervention effectiveness"
+                ]
+            },
+            "Automation": {
+                "Authority": [
+                    "Problem diagnosis",
+                    "Problem Diagnosing",
+                    "Monitoring Effectiveness of Intervention",
+                    "Anomaly Recognizing",
+                    "Anomaly condition",
+                    "Status of intervention effectiveness"
+                ]
+            },
+            "MCC": {
+                "Authority": [
+                    "Repercussion Anticipating",
+                    "Damage Assessing",
+                    "Problem diagnosis",
+                    "Problem Diagnosing",
+                    "Damage assessment",
+                    "Anticipated repercussions",
+                    "Ameliorating",
+                    "Amelioration plan"
+                ]
+            },
+            "Robot": {
+                "Authority": [
+                    "Sensor information",
+                    "Power signal",
+                    "Temperature signal",
+                    "Pressure signal",
+                    "Plan Implementing"
+                ]
+            },
+            "Unassigned": {
+                "Authority": []
+            }
+        }
+    }
+}

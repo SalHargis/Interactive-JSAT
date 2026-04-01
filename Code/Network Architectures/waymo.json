@@ -1,0 +1,173 @@
+{
+    "GraphData": {
+        "Nodes": {
+            "LidarScanning": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "LidarScanning"
+            },
+            "CameraImaging": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "CameraImaging"
+            },
+            "GNSS_IMU_InertialTracking": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "GNSS_IMU_InertialTracking"
+            },
+            "ObjectDetectionAndClassification": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "ObjectDetectionAndClassification"
+            },
+            "PoseEstimation": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "PoseEstimation"
+            },
+            "TrajectoryGeneration": {
+                "Type": "DistributedWorkFunction",
+                "UserData": "TrajectoryGeneration"
+            },
+            "EdgeCaseSceneInterpretation": {
+                "Type": "SynchronyFunction",
+                "UserData": "EdgeCaseSceneInterpretation"
+            },
+            "RemoteTeleopOverride": {
+                "Type": "SynchronyFunction",
+                "UserData": "RemoteTeleopOverride"
+            },
+            "RawPointCloud": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "RawPointCloud"
+            },
+            "RGBVideoFrames": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "RGBVideoFrames"
+            },
+            "VehicleOdometryData": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "VehicleOdometryData"
+            },
+            "SemanticOccupancyMap": {
+                "Type": "CoordinationGroundingResource",
+                "UserData": "SemanticOccupancyMap"
+            },
+            "LocalCoordinatePose": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "LocalCoordinatePose"
+            },
+            "TargetTrajectory": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "TargetTrajectory"
+            },
+            "HumanValidatedPath": {
+                "Type": "CoordinationGroundingResource",
+                "UserData": "HumanValidatedPath"
+            },
+            "CAN_BusActuationCommands": {
+                "Type": "BaseEnvironmentResource",
+                "UserData": "CAN_BusActuationCommands"
+            }
+        },
+        "Edges": [
+            {
+                "Source": "LidarScanning",
+                "Target": "RawPointCloud",
+                "UserData": { "QOS": "10Hz" }
+            },
+            {
+                "Source": "CameraImaging",
+                "Target": "RGBVideoFrames",
+                "UserData": { "QOS": "30fps" }
+            },
+            {
+                "Source": "GNSS_IMU_InertialTracking",
+                "Target": "VehicleOdometryData",
+                "UserData": { "QOS": "100Hz" }
+            },
+            {
+                "Source": "ObjectDetectionAndClassification",
+                "Target": "SemanticOccupancyMap",
+                "UserData": { "QOS": "Low-Latency" }
+            },
+            {
+                "Source": "PoseEstimation",
+                "Target": "LocalCoordinatePose",
+                "UserData": { "QOS": "High-Precision" }
+            },
+            {
+                "Source": "TrajectoryGeneration",
+                "Target": "TargetTrajectory",
+                "UserData": { "QOS": "Nominal" }
+            },
+            {
+                "Source": "EdgeCaseSceneInterpretation",
+                "Target": "HumanValidatedPath",
+                "UserData": { "QOS": "Manual-Validation" }
+            },
+            {
+                "Source": "RemoteTeleopOverride",
+                "Target": "CAN_BusActuationCommands",
+                "UserData": { "QOS": "Critical-Override" }
+            },
+            {
+                "Source": "RawPointCloud",
+                "Target": "ObjectDetectionAndClassification",
+                "UserData": { "QOS": "" }
+            },
+            {
+                "Source": "RGBVideoFrames",
+                "Target": "ObjectDetectionAndClassification",
+                "UserData": { "QOS": "" }
+            },
+            {
+                "Source": "VehicleOdometryData",
+                "Target": "PoseEstimation",
+                "UserData": { "QOS": "" }
+            },
+            {
+                "Source": "SemanticOccupancyMap",
+                "Target": "TrajectoryGeneration",
+                "UserData": { "QOS": "" }
+            },
+            {
+                "Source": "LocalCoordinatePose",
+                "Target": "TrajectoryGeneration",
+                "UserData": { "QOS": "" }
+            },
+            {
+                "Source": "TargetTrajectory",
+                "Target": "EdgeCaseSceneInterpretation",
+                "UserData": { "QOS": "Confidence-Triggered" }
+            },
+            {
+                "Source": "HumanValidatedPath",
+                "Target": "TrajectoryGeneration",
+                "UserData": { "QOS": "" }
+            }
+        ],
+        "Agents": {
+            "Autonomous Vehicle (On-Board)": {
+                "Authority": [
+                    "LidarScanning",
+                    "CameraImaging",
+                    "GNSS_IMU_InertialTracking",
+                    "ObjectDetectionAndClassification",
+                    "PoseEstimation",
+                    "TrajectoryGeneration",
+                    "RawPointCloud",
+                    "RGBVideoFrames",
+                    "VehicleOdometryData",
+                    "LocalCoordinatePose",
+                    "TargetTrajectory"
+                ]
+            },
+            "Remote Operations Team (Human)": {
+                "Authority": [
+                    "EdgeCaseSceneInterpretation",
+                    "RemoteTeleopOverride",
+                    "SemanticOccupancyMap",
+                    "HumanValidatedPath",
+                    "CAN_BusActuationCommands"
+                ]
+            }
+        }
+    }
+}

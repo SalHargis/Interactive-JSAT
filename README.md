@@ -11,6 +11,9 @@ pip install networkx
 
 ## How to Run
 
+Example of command line to launch: 
+```/opt/homebrew/bin/python3.11 /Users/hargis.29/Documents/GitHub/Interactive-JSAT/Code/main.py```
+
 ### main.py
 Navigate to the project directory in your terminal and run the main application file:
 python main.py
